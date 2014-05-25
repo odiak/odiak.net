@@ -1,0 +1,30 @@
+body {
+  margin: 0 auto;
+  width: 500px;
+  color: #444;
+  font-family: HelveticaNeue-Light, Arial;
+  font-weight: lighter;
+  font-size: 1.3em;
+}
+
+h1, h2, h3, h4 {
+  font-weight: normal;
+}
+
+ul, p {
+  margin-top: 0;
+}
+
+p {
+  line-height: 1.5em;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+#copyright {
+  margin-top: 40px;
+  color: #888;
+}

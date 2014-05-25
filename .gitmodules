@@ -1,0 +1,3 @@
+[submodule "reversi"]
+	path = reversi
+	url = https://github.com/odiak/reversi-web.git

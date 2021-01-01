@@ -1,0 +1,8 @@
+{
+  "redirects": [
+    {
+      "source": "/reversi/",
+      "destination": "https://reversi.odiak.net"
+    }
+  ]
+}

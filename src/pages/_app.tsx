@@ -1,10 +1,15 @@
+import Head from 'next/head'
 import Link from 'next/link'
-import React from 'react'
+import { FC } from 'react'
 import '../styles/globals.css'
 
-function MyApp({ Component, pageProps }: { Component: React.FC; pageProps: any }) {
+function MyApp({ Component, pageProps }: { Component: FC; pageProps: any }) {
   return (
     <>
+      <Head>
+        <link rel="icon" href="/favicon.png" />
+      </Head>
+
       <header>
         <Link href="/">岩本海童のWebサイト</Link>
       </header>

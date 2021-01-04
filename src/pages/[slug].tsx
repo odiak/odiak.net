@@ -1,7 +1,6 @@
 import { Content, getAllSlugs, getContent } from '../contents'
 import ReactMarkdown from 'react-markdown'
 import { GetStaticPaths, GetStaticProps } from 'next'
-import { Title } from '../components/Title'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
 

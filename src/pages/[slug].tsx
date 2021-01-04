@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import { GetStaticPaths, GetStaticProps } from 'next'
 import { Title } from '../components/Title'
 import { ShowDate } from '../components/ShowDate'
+import { MetaData } from '../components/MetaData'
 
 type Props = {
   content: Content
@@ -14,7 +15,7 @@ type Params = {
 export default function ShowContent({ content }: Props) {
   return (
     <>
-      <Title>{content.title}</Title>
+      <MetaData title={content.title} />
 
       <main>
         <h1>{content.title}</h1>

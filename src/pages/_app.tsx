@@ -11,7 +11,7 @@ function MyApp({ Component, pageProps }: { Component: FC; pageProps: any }) {
       </Head>
 
       <header>
-        <Link href="/">岩本海童のWebサイト</Link>
+        <Link href="/">odiak.net</Link>
       </header>
       <Component {...pageProps} />
       <footer>&copy; 2021 Kaido Iwamoto</footer>

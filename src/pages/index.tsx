@@ -1,8 +1,8 @@
-import { GetStaticPaths, GetStaticProps } from 'next'
+import { GetStaticProps } from 'next'
 import { Content, getAllSlugs, getContent } from '../contents'
 import Link from 'next/link'
 import { ShowDate } from '../components/ShowDate'
-import { Title } from '../components/Title'
+import { MetaData } from '../components/MetaData'
 
 type Props = { contents: Content[] }
 type Params = {}
@@ -10,7 +10,9 @@ type Params = {}
 export default function Index({ contents }: Props) {
   return (
     <>
-      <Title />
+      <MetaData />
+
+      <p>岩本海童の個人的なウェブサイトです。</p>
 
       <main>
         <ul>

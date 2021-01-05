@@ -23,7 +23,14 @@ export function getContent(slug: string): Content {
   const title = data.title
   if (typeof title !== 'string') throw Error(`Invalid title for ${slug}`)
 
-  const rawCreated = data.created
+  let rawCreated = data.created
+  if (rawCreated == null) {
+    // guess date
+    const m = slug.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
+    if (m != null) {
+      rawCreated = new Date(parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10))
+    }
+  }
   if (!(rawCreated instanceof Date)) throw Error(`Invalid created date for ${slug}`)
 
   const created = dateToDateLikeObject(rawCreated)

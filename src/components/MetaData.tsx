@@ -18,7 +18,7 @@ export const MetaData: FC<{ title?: string; description?: string }> = ({
         {title != null && title !== '' ? `${title} - ` : ''}
         {websiteName}
       </title>
-      <meta property="description" content={description} />
+      <meta name="description" content={description} />
       <meta property="og:type" content="website" />
       <meta property="og:title" content={title || websiteName} />
       <meta property="og:description" content={description} />
@@ -26,7 +26,7 @@ export const MetaData: FC<{ title?: string; description?: string }> = ({
       <meta property="og:url" content={`https://odiak.net${path}`} />
       <meta property="og:locale" content="ja_JP" />
       <meta property="og:site_name" content={websiteName} />
-      <meta property="twitter:card" content="summary" />
+      <meta name="twitter:card" content="summary" />
     </Head>
   )
 }

@@ -28,7 +28,7 @@ export function getContent(slug: string): Content {
     // guess date
     const m = slug.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
     if (m != null) {
-      rawCreated = new Date(parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10))
+      rawCreated = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10))
     }
   }
   if (!(rawCreated instanceof Date)) throw Error(`Invalid created date for ${slug}`)

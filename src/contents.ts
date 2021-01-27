@@ -1,6 +1,11 @@
 import glob from 'glob'
 import fs from 'fs'
 import matter from 'gray-matter'
+import { collectAllInternalLinks, getProcessor, Link } from './markdown'
+
+export type LinkWithOneHopLinks = Link & {
+  oneHopLinks?: Array<Link>
+}
 
 export type DateLikeObject = { year: number; month: number; day: number }
 export type Content = {
@@ -9,6 +14,9 @@ export type Content = {
   created: DateLikeObject
   title: string
   isPinned: boolean
+  isIntermediate: boolean
+  outgoingLinks?: Array<LinkWithOneHopLinks>
+  incomingLinks?: Array<Link>
 }
 
 function loadContent(slug: string): Content {
@@ -33,13 +41,64 @@ function loadContent(slug: string): Content {
 
   const isPinned = data.pinned === true
 
-  return { slug, body, created, title, isPinned }
+  return { slug, body, created, title, isPinned, isIntermediate: false }
 }
 
-const contents: Content[] = []
+const contents = new Map<string, Content>()
+
 function prepareContents() {
   const slugs = glob.sync('contents/*.md').map((s) => s.match(/\/([^\/]+)\.md$/)![1])
-  contents.push(...slugs.map((slug) => loadContent(slug)))
+  for (const slug of slugs) {
+    contents.set(slug, loadContent(slug))
+  }
+
+  const processor = getProcessor(Array.from(contents.values()))
+  const existingSlugs = new Set(slugs)
+  const unknownSlugs = new Set<string>()
+  const intermediateLinks = new Set<Link>()
+  const directLinkMap = new Map<string, Link[]>()
+  for (const content of contents.values()) {
+    const node = processor.parse(content.body)
+    const links = collectAllInternalLinks(node)
+    if (links.length === 0) continue
+    directLinkMap.set(content.slug, links)
+    for (const link of links) {
+      const { slug } = link
+      if (!existingSlugs.has(slug)) {
+        if (unknownSlugs.has(slug)) {
+          intermediateLinks.add(link)
+        } else {
+          unknownSlugs.add(slug)
+        }
+      }
+    }
+  }
+
+  for (const { name, slug } of intermediateLinks) {
+    contents.set(slug, {
+      body: '',
+      title: name,
+      slug: slug,
+      isPinned: false,
+      isIntermediate: true,
+      created: { year: 0, month: 1, day: 1 }
+    })
+  }
+
+  for (const [slug, links] of directLinkMap.entries()) {
+    const validLinks = links
+      .filter((link) => contents.has(link.slug))
+      .map(({ slug }) => ({ slug, name: contents.get(slug)!.title }))
+    if (validLinks.length === 0) continue
+    const content = contents.get(slug)!
+    const outgoingLinks = (content.outgoingLinks ??= [])
+    outgoingLinks.push(...validLinks)
+    for (const { slug: slug2 } of validLinks) {
+      const content2 = contents.get(slug2)!
+      const incomingLinks = (content2.incomingLinks ??= [])
+      incomingLinks.push({ slug, name: content.title })
+    }
+  }
 }
 
 function dateToDateLikeObject(date: Date): DateLikeObject {
@@ -51,13 +110,17 @@ function dateToDateLikeObject(date: Date): DateLikeObject {
 }
 
 export function getContent(slug: string): Content {
-  const content = contents.find((c) => c.slug === slug)
+  const content = contents.get(slug)
   if (content == null) throw new Error(`content not found: ${slug}`)
   return content
 }
 
+export function getAllContents(): Content[] {
+  return Array.from(contents.values())
+}
+
 export function getAllSlugs(): string[] {
-  return contents.map((c) => c.slug)
+  return Array.from(contents.keys())
 }
 
 prepareContents()

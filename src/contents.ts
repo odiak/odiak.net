@@ -2,10 +2,6 @@ import glob from 'glob'
 import fs from 'fs'
 import matter from 'gray-matter'
 
-export function getAllSlugs(): string[] {
-  return glob.sync('contents/*.md').map((s) => s.match(/\/([^\/]+)\.md$/)![1])
-}
-
 export type DateLikeObject = { year: number; month: number; day: number }
 export type Content = {
   slug: string
@@ -15,7 +11,7 @@ export type Content = {
   isPinned: boolean
 }
 
-export function getContent(slug: string): Content {
+function loadContent(slug: string): Content {
   const rawBody = fs.readFileSync(`contents/${slug}.md`, 'utf8')
 
   const { content: body, data } = matter(rawBody)
@@ -40,6 +36,12 @@ export function getContent(slug: string): Content {
   return { slug, body, created, title, isPinned }
 }
 
+const contents: Content[] = []
+function prepareContents() {
+  const slugs = glob.sync('contents/*.md').map((s) => s.match(/\/([^\/]+)\.md$/)![1])
+  contents.push(...slugs.map((slug) => loadContent(slug)))
+}
+
 function dateToDateLikeObject(date: Date): DateLikeObject {
   return {
     year: date.getFullYear(),
@@ -47,3 +49,15 @@ function dateToDateLikeObject(date: Date): DateLikeObject {
     day: date.getDate()
   }
 }
+
+export function getContent(slug: string): Content {
+  const content = contents.find((c) => c.slug === slug)
+  if (content == null) throw new Error(`content not found: ${slug}`)
+  return content
+}
+
+export function getAllSlugs(): string[] {
+  return contents.map((c) => c.slug)
+}
+
+prepareContents()

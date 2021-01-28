@@ -6,6 +6,7 @@ import unified from 'unified'
 import remarkParse from 'remark-parse'
 import { wikiLinkPlugin } from 'remark-wiki-link'
 import remarkReact from 'remark-react'
+import { schema } from '../markdown-sanitization-schema'
 
 type Props = {
   content: Content
@@ -27,12 +28,14 @@ export default function ShowContent({ content, contents }: Props) {
           unified()
             .use(remarkParse)
             .use(wikiLinkPlugin, {
-              permalinks: contents.map((c) => c.slug),
+              permalinks: contents
+                .filter((c) => c.isLinkedFromMultipleContents !== false)
+                .map((c) => c.slug),
               pageResolver: (name: string) =>
                 contents.filter((c) => c.title === name).map((c) => c.slug),
               hrefTemplate: (slug: string) => `/${slug}`
             })
-            .use(remarkReact)
+            .use(remarkReact, { sanitize: schema })
             .processSync(content.body).result
         }
       </main>

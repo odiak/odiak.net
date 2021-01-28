@@ -15,6 +15,7 @@ export type Content = {
   title: string
   isPinned: boolean
   isIntermediate: boolean
+  isLinkedFromMultipleContents?: boolean
   outgoingLinks?: Array<LinkWithOneHopLinks>
   incomingLinks?: Array<Link>
 }
@@ -55,7 +56,8 @@ function prepareContents() {
   const processor = getProcessor(Array.from(contents.values()))
   const existingSlugs = new Set(slugs)
   const unknownSlugs = new Set<string>()
-  const intermediateLinks = new Set<Link>()
+  const intermediateSlugs = new Set<string>()
+  const nameBySlug = new Map<string, string>()
   const directLinkMap = new Map<string, Link[]>()
   for (const content of contents.values()) {
     const node = processor.parse(content.body)
@@ -63,10 +65,11 @@ function prepareContents() {
     if (links.length === 0) continue
     directLinkMap.set(content.slug, links)
     for (const link of links) {
-      const { slug } = link
+      const { slug, name } = link
       if (!existingSlugs.has(slug)) {
+        nameBySlug.set(slug, name)
         if (unknownSlugs.has(slug)) {
-          intermediateLinks.add(link)
+          intermediateSlugs.add(slug)
         } else {
           unknownSlugs.add(slug)
         }
@@ -74,13 +77,15 @@ function prepareContents() {
     }
   }
 
-  for (const { name, slug } of intermediateLinks) {
+  for (const slug of unknownSlugs) {
+    const name = nameBySlug.get(slug)!
     contents.set(slug, {
       body: '',
       title: name,
       slug: slug,
       isPinned: false,
       isIntermediate: true,
+      isLinkedFromMultipleContents: intermediateSlugs.has(slug),
       created: { year: 0, month: 1, day: 1 }
     })
   }

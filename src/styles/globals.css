@@ -38,3 +38,8 @@ footer {
   margin-top: 30px;
   color: #777;
 }
+
+a:link.new,
+a:visited.new {
+  text-decoration-style: dotted;
+}

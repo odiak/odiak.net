@@ -1,5 +1,5 @@
 import { GetStaticProps } from 'next'
-import { Content, getAllSlugs, getContent } from '../contents'
+import { Content, getAllContents } from '../contents'
 import Link from 'next/link'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
@@ -29,7 +29,7 @@ export default function Index({ contents }: Props) {
 }
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
-  const contents = getAllSlugs().map((slug) => getContent(slug))
+  const contents = getAllContents().filter((c) => !c.isIntermediate)
   contents.sort(
     (a, b) =>
       -(

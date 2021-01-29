@@ -11,7 +11,7 @@ export function getProcessor(contents: Content[]) {
       permalinks: contents.map((c) => c.slug),
       pageResolver: (name: string): string[] =>
         contents
-          .filter((c) => c.title === name)
+          .filter((c) => c.title.toLowerCase() === name.toLowerCase())
           .map((c) => c.slug)
           .concat([name]),
       hrefTemplate: (slug: string) => `/${slug}`

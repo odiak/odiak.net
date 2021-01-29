@@ -32,7 +32,9 @@ export default function ShowContent({ content, contents }: Props) {
                 .filter((c) => c.isLinkedFromMultipleContents !== false)
                 .map((c) => c.slug),
               pageResolver: (name: string) =>
-                contents.filter((c) => c.title === name).map((c) => c.slug),
+                contents
+                  .filter((c) => c.title.toLowerCase() === name.toLowerCase())
+                  .map((c) => c.slug),
               hrefTemplate: (slug: string) => `/${slug}`
             })
             .use(remarkReact, { sanitize: schema })

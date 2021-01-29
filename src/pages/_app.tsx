@@ -10,7 +10,7 @@ function MyApp({ Component, pageProps }: { Component: FC; pageProps: any }) {
         <link rel="icon" href="/favicon.png" />
       </Head>
 
-      <header>
+      <header className="main-header">
         <Link href="/">odiak.net</Link>
       </header>
       <Component {...pageProps} />

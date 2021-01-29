@@ -23,10 +23,10 @@ export type Link = {
   slug: string
 }
 
-function collectAllLinks(content: Node, links: Set<Link>) {
+function collectAllLinks(content: Node, links: Map<string, Link>) {
   if (content.type === 'wikiLink') {
     const data = content.data as { permalink: string; alias: string }
-    links.add({ name: data.alias, slug: data.permalink })
+    links.set(data.permalink, { name: data.alias, slug: data.permalink })
   }
   if (content.children == null) return
   for (const child of content.children as Node[]) {
@@ -35,7 +35,7 @@ function collectAllLinks(content: Node, links: Set<Link>) {
 }
 
 export function collectAllInternalLinks(content: Node): Link[] {
-  const links = new Set<Link>()
+  const links = new Map<string, Link>()
   collectAllLinks(content, links)
-  return Array.from(links)
+  return Array.from(links.values())
 }

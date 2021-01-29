@@ -39,31 +39,32 @@ export default function ShowContent({ content, contents }: Props) {
             .processSync(content.body).result
         }
       </main>
-      <h3>outgoing</h3>
-      <ul>
-        {content.outgoingLinks?.map(({ name, slug, oneHopLinks }) => (
-          <li key={slug}>
-            <a href={`/${slug}`}>{name}</a>
-            {oneHopLinks != null && (
-              <ul>
-                {oneHopLinks.map(({ slug, name }) => (
-                  <li key={slug}>
-                    <a href={`/${slug}`}>{name}</a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-      <h3>incoming</h3>
-      <ul>
-        {content.incomingLinks?.map(({ name, slug }) => (
-          <li key={slug}>
-            <a href={`/${slug}`}>{name}</a>
-          </li>
-        ))}
-      </ul>
+      {(content.incomingLinks != null || content.outgoingLinks != null) && (
+        <aside className="related-contents">
+          <header>関連リンク</header>
+          <ul>
+            {content.outgoingLinks?.map(({ name, slug, oneHopLinks }) => (
+              <li key={slug}>
+                <a href={`/${slug}`}>{name}</a>
+                {oneHopLinks != null && (
+                  <ul>
+                    {oneHopLinks.map(({ slug, name }) => (
+                      <li key={slug}>
+                        <a href={`/${slug}`}>{name}</a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+            {content.incomingLinks?.map(({ name, slug }) => (
+              <li key={slug}>
+                <a href={`/${slug}`}>{name}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
     </>
   )
 }

@@ -77,6 +77,7 @@ function prepareContents() {
     }
   }
 
+  // create non-existing pages
   for (const slug of unknownSlugs) {
     const name = nameBySlug.get(slug)!
     contents.set(slug, {
@@ -90,18 +91,53 @@ function prepareContents() {
     })
   }
 
-  for (const [slug, links] of directLinkMap.entries()) {
-    const validLinks = links
-      .filter((link) => contents.has(link.slug))
-      .map(({ slug }) => ({ slug, name: contents.get(slug)!.title }))
-    if (validLinks.length === 0) continue
-    const content = contents.get(slug)!
-    const outgoingLinks = (content.outgoingLinks ??= [])
-    outgoingLinks.push(...validLinks)
-    for (const { slug: slug2 } of validLinks) {
-      const content2 = contents.get(slug2)!
-      const incomingLinks = (content2.incomingLinks ??= [])
-      incomingLinks.push({ slug, name: content.title })
+  // normalize name of links
+  for (const [slug, links] of directLinkMap) {
+    directLinkMap.set(
+      slug,
+      links.map(({ slug }) => ({ slug, name: contents.get(slug)!.title }))
+    )
+  }
+
+  // prepare incoming links
+  for (const [fromSlug, links] of directLinkMap) {
+    const fromContent = contents.get(fromSlug)!
+    const outgoingLinks = (fromContent.outgoingLinks ??= [])
+    outgoingLinks.push(...links)
+    for (const { slug: toSlug } of links) {
+      const toContent = contents.get(toSlug)!
+      const incomingLinks = (toContent.incomingLinks ??= [])
+      incomingLinks.push({ slug: fromSlug, name: fromContent.title })
+    }
+  }
+
+  // prepare one-hop links
+  for (const [fromSlug, links] of directLinkMap) {
+    const fromContent = contents.get(fromSlug)!
+    for (const { slug: toSlug } of links) {
+      const toContent = contents.get(toSlug)!
+      const linksToAdd = toContent.incomingLinks!.filter((link) => link.slug !== fromSlug)
+      if (linksToAdd.length === 0) continue
+      const outgoingLink = fromContent.outgoingLinks!.find((link) => link.slug === toSlug)!
+      const links = (outgoingLink.oneHopLinks ??= [])
+      links.push(...linksToAdd)
+    }
+  }
+
+  // remove duplicated links
+  for (const content of contents.values()) {
+    const slugs = new Set(content.outgoingLinks?.map((link) => link.slug))
+    if (content.incomingLinks != null) {
+      content.incomingLinks = content.incomingLinks.filter((link) => !slugs.has(link.slug))
+      for (const { slug } of content.incomingLinks) slugs.add(slug)
+    }
+    if (content.outgoingLinks != null) {
+      for (const outLink of content.outgoingLinks) {
+        if (outLink.oneHopLinks != null) {
+          outLink.oneHopLinks = outLink.oneHopLinks.filter((link) => !slugs.has(link.slug))
+          for (const { slug } of outLink.oneHopLinks) slugs.add(slug)
+        }
+      }
     }
   }
 }

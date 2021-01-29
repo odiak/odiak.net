@@ -42,6 +42,8 @@ footer {
 a:link.new,
 a:visited.new {
   text-decoration-style: dotted;
+  text-decoration-color: #666;
+  color: inherit;
 }
 
 aside.related-contents {

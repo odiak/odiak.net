@@ -4,7 +4,7 @@ import matter from 'gray-matter'
 import { collectAllInternalLinks, getProcessor, Link } from './markdown'
 
 export type LinkWithOneHopLinks = Link & {
-  oneHopLinks?: Array<Link>
+  oneHopLinks?: Array<Link> | null
 }
 
 export type DateLikeObject = { year: number; month: number; day: number }
@@ -16,8 +16,8 @@ export type Content = {
   isPinned: boolean
   isIntermediate: boolean
   isLinkedFromMultipleContents?: boolean
-  outgoingLinks?: Array<LinkWithOneHopLinks>
-  incomingLinks?: Array<Link>
+  outgoingLinks?: Array<LinkWithOneHopLinks> | null
+  incomingLinks?: Array<Link> | null
 }
 
 function loadContent(slug: string): Content {
@@ -111,6 +111,17 @@ function prepareContents() {
     }
   }
 
+  // remove some outgoing links
+  for (const content of contents.values()) {
+    if (content.outgoingLinks == null) continue
+    content.outgoingLinks = content.outgoingLinks.filter(
+      ({ slug }) => contents.get(slug)!.isLinkedFromMultipleContents !== false
+    )
+    if (content.outgoingLinks.length === 0) {
+      content.outgoingLinks = null
+    }
+  }
+
   // prepare one-hop links
   for (const [fromSlug, links] of directLinkMap) {
     const fromContent = contents.get(fromSlug)!
@@ -118,7 +129,8 @@ function prepareContents() {
       const toContent = contents.get(toSlug)!
       const linksToAdd = toContent.incomingLinks!.filter((link) => link.slug !== fromSlug)
       if (linksToAdd.length === 0) continue
-      const outgoingLink = fromContent.outgoingLinks!.find((link) => link.slug === toSlug)!
+      if (fromContent.outgoingLinks == null) continue
+      const outgoingLink = fromContent.outgoingLinks.find((link) => link.slug === toSlug)!
       const links = (outgoingLink.oneHopLinks ??= [])
       links.push(...linksToAdd)
     }

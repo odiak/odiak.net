@@ -71,3 +71,12 @@ main code {
   font-size: 85%;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
+
+main pre > code {
+  display: block;
+  padding: 0.8em;
+}
+
+main img {
+  max-width: 100%;
+}

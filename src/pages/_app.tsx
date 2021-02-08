@@ -14,7 +14,9 @@ function MyApp({ Component, pageProps }: { Component: FC; pageProps: any }) {
         <Link href="/">odiak.net</Link>
       </header>
       <Component {...pageProps} />
-      <footer>&copy; 2021 Kaido Iwamoto</footer>
+      <footer>
+        &copy; 2021 Kaido Iwamoto; <a href="https://github.com/odiak/odiak.net">source code</a>
+      </footer>
     </>
   )
 }

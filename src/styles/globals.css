@@ -39,6 +39,12 @@ footer {
   color: #777;
 }
 
+footer a:link,
+footer a:visited {
+  color: inherit;
+  margin-left: 0.4em;
+}
+
 a:link.new,
 a:visited.new {
   text-decoration-style: dotted;

@@ -176,4 +176,10 @@ export function getAllSlugs(): string[] {
   return Array.from(contents.keys())
 }
 
+export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number {
+  const { year: year1, month: month1, day: day1 } = d1
+  const { year: year2, month: month2, day: day2 } = d2
+  return year1 - year2 || month1 - month2 || day1 - day2
+}
+
 prepareContents()

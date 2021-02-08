@@ -1,5 +1,5 @@
 import { GetStaticProps } from 'next'
-import { Content, getAllContents } from '../contents'
+import { compareDateLike, Content, getAllContents } from '../contents'
 import Link from 'next/link'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
@@ -32,12 +32,7 @@ export const getStaticProps: GetStaticProps<Props, Params> = async () => {
   const contents = getAllContents().filter((c) => !c.isIntermediate)
   contents.sort(
     (a, b) =>
-      -(
-        (a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) ||
-        a.created.year - b.created.year ||
-        a.created.month - b.created.month ||
-        a.created.day - b.created.day
-      )
+      -((a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) || compareDateLike(a.created, b.created))
   )
 
   return { props: { contents } }

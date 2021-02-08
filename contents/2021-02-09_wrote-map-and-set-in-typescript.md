@@ -4,9 +4,9 @@ title: TypeScriptでMapとSetを書いてみた
 
 ## TL;DR
 
-- TypeScriptで、ハッシュ関数と等値性を指定できるMapとSetを書いた。
-- APIはECMAScriptのそれらとほぼ同じになるようにした。
-- 最初はJavaのLinkedHashMapを移植しかけたけど、ライセンス的に問題があるかもしれないので少し違うものに置き換えた。
+- [[TypeScript]]で、ハッシュ関数と等値性を指定できる[[Map]]と[[Set]]を書いた。
+- APIは[[ECMAScript]]のそれらとほぼ同じになるようにした。
+- 最初は[[Java]]のLinkedHashMapを移植しかけたけど、ライセンス的に問題があるかもしれないので少し違うものに置き換えた。
 - <https://github.com/odiak/map-and-set>で公開した。
 
 ---
@@ -14,7 +14,7 @@ title: TypeScriptでMapとSetを書いてみた
 先日、[[JavaScriptのSetはオブジェクトを入れづらい]]という話を書いたんだけど、その勢いでMapとSetを自分で実装してみることにした。
 
 改めて書くと、やりたいことは、等値性とハッシュ関数を指定できるMapとSetを作ること。
-APIはできるだけECMAScriptのものと同じにしたい。
+APIはできるだけ[[ECMAScript]]のものと同じにしたい。
 
 クラスの定義はこんな感じ。(コンストラクターの型定義だけ。それ以外のメソッドの型はESと同じ。)
 
@@ -33,7 +33,7 @@ class Set<Value> {
   constructor(
     iterable: Iterable<Value>,
     {
-      hash: (key: Value) => number,
+      hash: (val: Value) => number,
       equal: (val1: Value, val2: Value) => boolean)
     }
   )
@@ -87,14 +87,14 @@ npmでも公開した。 <https://www.npmjs.com/package/map-and-set>
 
 ### Jestのはなし
 
-今回は、Jestというテストのツールを初めて使ってみた。以前にChai+Mochaを使った気がするけど、Jestの方が設定が楽かなぁ？
+今回は、[[Jest]]というテストのツールを初めて使ってみた。以前にChai+Mochaを使った気がするけど、Jestの方が設定が楽かなぁ？
 いや、TypeScriptを使わないなら楽だと思うけど、TSを使うとトータルの手間はあまり変わらないかも。
 ツール自体はよくできていると思う。
 
 ### JavaのLinkedHashMapと、V8のMapの違い
 
 どちらも、挿入順が維持されるマップの実装。
-ハッシュテーブルにEntryオブジェクトを連ねていく点は共通だけど、挿入順を維持するための仕組みが少し違う。
+[[ハッシュテーブル]]にEntryオブジェクトを連ねていく点は共通だけど、挿入順を維持するための仕組みが少し違う。
 
 イメージ:  
 ![](https://i.kakeru.app/7681efcb1643e2d8c86613caf3f9feb1.svg)

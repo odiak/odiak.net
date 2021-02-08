@@ -18,6 +18,7 @@ export const MetaData: FC<{ title?: string; description?: string }> = ({
         {title != null && title !== '' ? `${title} - ` : ''}
         {websiteName}
       </title>
+      <link rel="alternate" href="/atom-feed.xml" type="application/atom+xml" />
       <meta name="description" content={description} />
       <meta property="og:type" content="website" />
       <meta property="og:title" content={title || websiteName} />

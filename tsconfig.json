@@ -15,6 +15,6 @@
     "isolatedModules": true,
     "typeRoots": ["./node_modules/@types", "./src/typing"]
   },
-  "include": ["./src", "./scripts"],
+  "include": ["./src"],
   "exclude": ["node_modules"]
 }

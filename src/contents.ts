@@ -1,5 +1,6 @@
 import glob from 'glob'
 import fs from 'fs'
+import path from 'path'
 import matter from 'gray-matter'
 import { collectAllInternalLinks, getProcessor, Link } from './markdown'
 
@@ -20,27 +21,32 @@ export type Content = {
   incomingLinks?: Array<Link> | null
 }
 
-function loadContent(slug: string): Content {
-  const rawBody = fs.readFileSync(`contents/${slug}.md`, 'utf8')
+function extractDateFromBeginning(text: string): Date | undefined {
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
+  if (m === null) return
+  const year = parseInt(m[1], 10)
+  const month = parseInt(m[2], 10)
+  const day = parseInt(m[3], 10)
+  return new Date(year, month - 1, day)
+}
+
+function loadContent(fileName: string): Content {
+  const rawBody = fs.readFileSync(`contents/${fileName}`, 'utf8')
 
   const { content: body, data } = matter(rawBody)
 
-  const title = data.title
-  if (typeof title !== 'string') throw Error(`Invalid title for ${slug}`)
+  const title = data.title ?? path.basename(fileName, '.md')
+  if (typeof title !== 'string') throw Error(`Invalid title for ${fileName}`)
 
-  let rawCreated = data.created
-  if (rawCreated == null) {
-    // guess date
-    const m = slug.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
-    if (m != null) {
-      rawCreated = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10))
-    }
-  }
-  if (!(rawCreated instanceof Date)) throw Error(`Invalid created date for ${slug}`)
+  const slug = data.slug
+  if (typeof slug !== 'string') throw Error(`Invalid slug for ${fileName}`)
+
+  let rawCreated = data.created ?? extractDateFromBeginning(slug)
+  if (!(rawCreated instanceof Date)) throw Error(`Invalid created date for ${fileName}`)
 
   const created = dateToDateLikeObject(rawCreated)
 
-  const isPinned = data.pinned === true
+  const isPinned = Boolean(data.pinned)
 
   return { slug, body, created, title, isPinned, isIntermediate: false }
 }
@@ -48,13 +54,14 @@ function loadContent(slug: string): Content {
 const contents = new Map<string, Content>()
 
 function prepareContents() {
-  const slugs = glob.sync('contents/*.md').map((s) => s.match(/\/([^\/]+)\.md$/)![1])
-  for (const slug of slugs) {
-    contents.set(slug, loadContent(slug))
+  const fileNames = glob.sync('contents/*.md').map((s) => path.basename(s))
+  for (const fileName of fileNames) {
+    const content = loadContent(fileName)
+    contents.set(content.slug, content)
   }
 
   const processor = getProcessor(Array.from(contents.values()))
-  const existingSlugs = new Set(slugs)
+  const existingSlugs = new Set([...contents.values()].map((c) => c.slug))
   const unknownSlugs = new Set<string>()
   const intermediateSlugs = new Set<string>()
   const nameBySlug = new Map<string, string>()

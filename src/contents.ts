@@ -170,9 +170,18 @@ async function prepareContents(): Promise<Contents> {
   return contents
 }
 
-export function ensureContents(forceReload: boolean = false): Promise<Contents> {
-  if (!forceReload && contents) return contents
-  const newContents = prepareContents()
+export async function ensureContents(forceReload: boolean = false): Promise<Contents> {
+  const oldContents = contents
+  if (!forceReload && oldContents) return oldContents
+
+  // wait for previous loading
+  const oldContentsValue = await oldContents
+
+  const newContents = prepareContents().catch((e) => {
+    console.error(e)
+    if (oldContentsValue) return oldContentsValue
+    throw e
+  })
   contents = newContents
   return newContents
 }

@@ -74,14 +74,14 @@ export default function ShowContent({ content, contents }: Props) {
 export const getStaticProps: GetStaticProps<Props, Params> = async (context) => {
   const { slug } = context.params!
 
-  const content = getContent(slug)
-  const contents = getAllContents()
+  const content = await getContent(slug)
+  const contents = await getAllContents()
   return { props: { content, contents } }
 }
 
 export const getStaticPaths: GetStaticPaths<Params> = async () => {
   return {
-    paths: getAllSlugs().map((slug) => ({ params: { slug } })),
+    paths: (await getAllSlugs()).map((slug) => ({ params: { slug } })),
     fallback: false
   }
 }

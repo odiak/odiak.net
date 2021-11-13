@@ -29,7 +29,7 @@ export default function Index({ contents }: Props) {
 }
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
-  const contents = getAllContents().filter((c) => !c.isIntermediate)
+  const contents = (await getAllContents()).filter((c) => !c.isIntermediate)
   contents.sort(
     (a, b) =>
       -((a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) || compareDateLike(a.created, b.created))

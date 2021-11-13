@@ -1,5 +1,5 @@
 import glob from 'glob'
-import fs from 'fs'
+import fs from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
 import { collectAllInternalLinks, getProcessor, Link } from './markdown'
@@ -21,6 +21,10 @@ export type Content = {
   incomingLinks?: Array<Link> | null
 }
 
+type Contents = Map<string, Content>
+
+let contents: Promise<Contents> | undefined = undefined
+
 function extractDateFromBeginning(text: string): Date | undefined {
   const m = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
   if (m === null) return
@@ -30,8 +34,8 @@ function extractDateFromBeginning(text: string): Date | undefined {
   return new Date(year, month - 1, day)
 }
 
-function loadContent(fileName: string): Content {
-  const rawBody = fs.readFileSync(`contents/${fileName}`, 'utf8')
+async function loadContent(fileName: string): Promise<Content> {
+  const rawBody = await fs.readFile(`contents/${fileName}`, 'utf8')
 
   const { content: body, data } = matter(rawBody)
 
@@ -51,14 +55,17 @@ function loadContent(fileName: string): Content {
   return { slug, body, created, title, isPinned, isIntermediate: false }
 }
 
-const contents = new Map<string, Content>()
-
-function prepareContents() {
-  const fileNames = glob.sync('contents/*.md').map((s) => path.basename(s))
-  for (const fileName of fileNames) {
-    const content = loadContent(fileName)
-    contents.set(content.slug, content)
-  }
+async function prepareContents(): Promise<Contents> {
+  const contents: Contents = new Map()
+  const promises = glob
+    .sync('contents/*.md')
+    .map((s) => path.basename(s))
+    .map((f) =>
+      loadContent(f).then((content) => {
+        contents.set(content.slug, content)
+      })
+    )
+  await Promise.all(promises)
 
   const processor = getProcessor(Array.from(contents.values()))
   const existingSlugs = new Set([...contents.values()].map((c) => c.slug))
@@ -159,6 +166,15 @@ function prepareContents() {
       }
     }
   }
+
+  return contents
+}
+
+export function ensureContents(forceReload: boolean = false): Promise<Contents> {
+  if (!forceReload && contents) return contents
+  const newContents = prepareContents()
+  contents = newContents
+  return newContents
 }
 
 function dateToDateLikeObject(date: Date): DateLikeObject {
@@ -169,18 +185,18 @@ function dateToDateLikeObject(date: Date): DateLikeObject {
   }
 }
 
-export function getContent(slug: string): Content {
-  const content = contents.get(slug)
+export async function getContent(slug: string): Promise<Content> {
+  const content = (await ensureContents()).get(slug)
   if (content == null) throw new Error(`content not found: ${slug}`)
   return content
 }
 
-export function getAllContents(): Content[] {
-  return Array.from(contents.values())
+export async function getAllContents(): Promise<Content[]> {
+  return Array.from((await ensureContents()).values())
 }
 
-export function getAllSlugs(): string[] {
-  return Array.from(contents.keys())
+export async function getAllSlugs(): Promise<string[]> {
+  return Array.from((await ensureContents()).keys())
 }
 
 export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number {
@@ -188,5 +204,3 @@ export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number 
   const { year: year2, month: month2, day: day2 } = d2
   return year1 - year2 || month1 - month2 || day1 - day2
 }
-
-prepareContents()

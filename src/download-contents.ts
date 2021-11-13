@@ -1,7 +1,8 @@
 import { google } from 'googleapis'
 import fs from 'fs'
 import fsp from 'fs/promises'
-;(async () => {
+
+export async function downloadContents() {
   const credentials = JSON.parse(process.env['GOOGLE_CREDENTIALS'] ?? '{}')
   const folderId = process.env['FOLDER_ID']
 
@@ -12,7 +13,7 @@ import fsp from 'fs/promises'
   const drive = google.drive({ version: 'v3', auth })
 
   await fsp.rm('contents', { recursive: true, force: true })
-  await fsp.mkdir('contents', { recursive: true })
+  await fsp.mkdir('contents')
 
   let pageToken: string | undefined
   const promises: Array<Promise<never>> = []
@@ -36,4 +37,6 @@ import fsp from 'fs/promises'
     pageToken = data.nextPageToken ?? undefined
   } while (pageToken)
   await Promise.all(promises)
-})()
+}
+
+downloadContents()

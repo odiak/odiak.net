@@ -1,7 +1,14 @@
 {
   "compilerOptions": {
     "jsx": "preserve",
-    "lib": ["dom", "es2015", "es2016", "es2017", "es2018", "es2019"],
+    "lib": [
+      "dom",
+      "es2015",
+      "es2016",
+      "es2017",
+      "es2018",
+      "es2019"
+    ],
     "strict": true,
     "target": "es6",
     "module": "commonjs",
@@ -13,8 +20,16 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "typeRoots": ["./node_modules/@types", "./src/typing"]
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/typing"
+    ],
+    "incremental": true
   },
-  "include": ["./src"],
-  "exclude": ["node_modules"]
+  "include": [
+    "./src"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

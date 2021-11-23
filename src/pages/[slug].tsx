@@ -2,11 +2,14 @@ import { Content, getAllSlugs, getContent, getAllContents } from '../contents'
 import { GetStaticPaths, GetStaticProps } from 'next'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
-import unified from 'unified'
+import { unified } from 'unified'
 import remarkParse from 'remark-parse'
-import { wikiLinkPlugin } from 'remark-wiki-link'
+import wikiLinkPlugin from 'remark-wiki-link'
 import remarkReact from 'remark-react'
 import { schema } from '../markdown-sanitization-schema'
+import remarkGfm from 'remark-gfm'
+import { createElement } from 'react'
+import remarkBreaks from 'remark-breaks'
 
 type Props = {
   content: Content
@@ -27,6 +30,8 @@ export default function ShowContent({ content, contents }: Props) {
         {
           unified()
             .use(remarkParse)
+            .use(remarkGfm)
+            .use(remarkBreaks)
             .use(wikiLinkPlugin, {
               permalinks: contents
                 .filter((c) => c.isLinkedFromMultipleContents !== false)
@@ -37,7 +42,7 @@ export default function ShowContent({ content, contents }: Props) {
                   .map((c) => c.slug),
               hrefTemplate: (slug: string) => `/${slug}`
             })
-            .use(remarkReact, { sanitize: schema })
+            .use(remarkReact, { sanitize: schema, createElement })
             .processSync(content.body).result
         }
       </main>

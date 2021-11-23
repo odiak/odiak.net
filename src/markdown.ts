@@ -1,6 +1,6 @@
-import unified from 'unified'
+import { unified } from 'unified'
 import remarkParse from 'remark-parse'
-import { wikiLinkPlugin } from 'remark-wiki-link'
+import wikiLinkPlugin from 'remark-wiki-link'
 import { Content } from './contents'
 import { Node } from 'unist'
 

@@ -1,4 +1,4 @@
 import deepmerge from 'deepmerge'
-import githubSanitizationSchema from 'hast-util-sanitize/lib/github.json'
+import { defaultSchema } from 'hast-util-sanitize/lib/schema.js'
 
-export const schema = deepmerge(githubSanitizationSchema, { attributes: { '*': ['className'] } })
+export const schema = deepmerge(defaultSchema, { attributes: { '*': ['className'] } })

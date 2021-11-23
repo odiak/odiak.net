@@ -3,8 +3,8 @@
 import fs from 'fs/promises'
 import { Feed } from 'feed'
 import remarkParse from 'remark-parse'
-import { wikiLinkPlugin } from 'remark-wiki-link'
-import unified from 'unified'
+import wikiLinkPlugin from 'remark-wiki-link'
+import { unified } from 'unified'
 import remarkHtml from 'remark-html'
 import { compareDateLike, getAllContents } from './contents'
 
@@ -45,7 +45,8 @@ async function generateFeed() {
           hrefTemplate: (slug: string) => `/${slug}`
         })
         .use(remarkHtml)
-        .processSync(c.body).contents as string
+        .processSync(c.body)
+        .toString()
 
       feed.addItem({
         title: c.title,

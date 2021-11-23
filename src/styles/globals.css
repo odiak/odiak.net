@@ -80,3 +80,9 @@ main pre > code {
 main img {
   max-width: 100%;
 }
+
+main blockquote {
+  margin-left: 10px;
+  padding: 1px 8px 1px 20px;
+  border-left: 4px solid #aaa;
+}

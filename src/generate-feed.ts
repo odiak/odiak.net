@@ -7,6 +7,7 @@ import wikiLinkPlugin from 'remark-wiki-link'
 import { unified } from 'unified'
 import remarkHtml from 'remark-html'
 import { compareDateLike, getAllContents } from './contents'
+import remarkBreaks from 'remark-breaks'
 
 async function generateFeed() {
   const feed = new Feed({
@@ -36,6 +37,7 @@ async function generateFeed() {
     .forEach((c) => {
       const htmlContent = unified()
         .use(remarkParse)
+        .use(remarkBreaks)
         .use(wikiLinkPlugin, {
           permalinks: contents
             .filter((c) => c.isLinkedFromMultipleContents !== false)

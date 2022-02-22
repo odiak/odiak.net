@@ -29,7 +29,6 @@ type Params = {
 }
 
 export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props) {
-  console.log(linksInfo)
   return (
     <>
       <MetaData title={content.title} />

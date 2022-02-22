@@ -146,6 +146,8 @@ intermediate: true
 ---`
       )
     }
+
+    filterLinks(linksInfo, nameToSlugMap)
   }
 
   const metaData: MetaData = {
@@ -189,6 +191,21 @@ async function saveContent(content: Content) {
   }
   contentStr += content.body
   await fsp.writeFile(`contents/${content.name}.md`, contentStr)
+}
+
+function filterLinks(links: LinksInformation, nameToSlug: Map<string, string>) {
+  const usedSlugs = new Set<string>()
+  function filterFn({ name }: { name: string }): boolean {
+    const slug = nameToSlug.get(name)!
+    if (usedSlugs.has(slug)) return false
+    usedSlugs.add(slug)
+    return true
+  }
+  links.outgoing = links.outgoing.filter(filterFn)
+  for (const li of links.outgoing) {
+    li.oneHopLinks = li.oneHopLinks.filter(filterFn)
+  }
+  links.incoming = links.incoming.filter(filterFn)
 }
 
 downloadContents()

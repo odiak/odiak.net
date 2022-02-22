@@ -22,12 +22,14 @@ type Props = {
       oneHopLinks: Array<{ slug: string; title: string; name: string }>
     }>
   }
+  nameToSlugMap: Record<string, { slug: string; isIntermediate: boolean }>
 }
 type Params = {
   slug: string
 }
 
-export default function ShowContent({ content, linksInfo }: Props) {
+export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props) {
+  console.log(linksInfo)
   return (
     <>
       <MetaData title={content.title} />
@@ -41,12 +43,12 @@ export default function ShowContent({ content, linksInfo }: Props) {
             .use(remarkGfm)
             .use(remarkBreaks)
             .use(wikiLinkPlugin, {
-              permalinks: linksInfo.outgoing.map((li) => `/${li.slug}`),
+              permalinks: Object.values(nameToSlugMap)
+                .filter(({ isIntermediate }) => !isIntermediate)
+                .map(({ slug }) => `/${slug}`),
               pageResolver: (name: string) =>
-                linksInfo.outgoing
-                  .filter((li) => li.name.toLowerCase() === name.toLowerCase())
-                  .map((li) => li.slug),
-              hrefTemplate: (slug: string) => `/${slug}`
+                name in nameToSlugMap ? [`/${nameToSlugMap[name].slug}`] : [],
+              hrefTemplate: (href: string) => href
             })
             .use(remarkReact, { sanitize: schema, createElement })
             .processSync(content.body).result
@@ -103,7 +105,13 @@ export const getStaticProps: GetStaticProps<Props, Params> = async (context) => 
       oneHopLinks: li.oneHopLinks.map(convert)
     }))
   }
-  return { props: { content, linksInfo } }
+  const nameToSlugMap = Object.fromEntries(
+    Object.entries(metaData.nameToSlugMap).map(([name, slug]) => [
+      name,
+      { slug, isIntermediate: metaData.nameToLinksMap[name].isIntermediate }
+    ])
+  )
+  return { props: { content, linksInfo, nameToSlugMap } }
 }
 
 export const getStaticPaths: GetStaticPaths<Params> = async () => {

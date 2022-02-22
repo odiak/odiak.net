@@ -85,7 +85,8 @@ export default function ShowContent({ content, linksInfo }: Props) {
 export const getStaticProps: GetStaticProps<Props, Params> = async (context) => {
   const { slug } = context.params!
 
-  const content = await getContent(slug)
+  const content: Content = { ...(await getContent(slug)), rawData: null }
+
   const metaData = await getMetaData()
   const rawLinksInfo = metaData.nameToLinksMap[content.name]
 

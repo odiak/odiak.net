@@ -12,7 +12,7 @@ export type DateLikeObject = { year: number; month: number; day: number }
 export type Content = {
   name: string
   slug: string
-  rawData: Record<string, unknown>
+  rawData: unknown
   body: string
   created: DateLikeObject | null
   modified: DateLikeObject | null

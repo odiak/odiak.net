@@ -42,7 +42,9 @@ export default function Index({ mainContents, subContents }: Props) {
 }
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
-  const contents = (await getAllContents()).filter((c) => !c.isIntermediate)
+  const contents = (await getAllContents())
+    .filter((c) => !c.isIntermediate)
+    .map((c) => ({ ...c, rawData: null }))
   const mainContents = contents.filter((c) => c.created != null)
   mainContents.sort(
     (a, b) =>

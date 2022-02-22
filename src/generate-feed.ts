@@ -32,16 +32,14 @@ async function generateFeed() {
   const contents = await getAllContents()
 
   contents
-    .filter((c) => !c.isIntermediate)
-    .sort((a, b) => -compareDateLike(a.created, b.created))
+    .filter((c) => !c.isIntermediate && c.created != null)
+    .sort((a, b) => -compareDateLike(a.created!, b.created!))
     .forEach((c) => {
       const htmlContent = unified()
         .use(remarkParse)
         .use(remarkBreaks)
         .use(wikiLinkPlugin, {
-          permalinks: contents
-            .filter((c) => c.isLinkedFromMultipleContents !== false)
-            .map((c) => c.slug),
+          permalinks: contents.map((c) => c.slug),
           pageResolver: (name: string) =>
             contents.filter((c) => c.title.toLowerCase() === name.toLowerCase()).map((c) => c.slug),
           hrefTemplate: (slug: string) => `/${slug}`
@@ -54,7 +52,7 @@ async function generateFeed() {
         title: c.title,
         id: `https://odiak.net/${c.slug}`,
         link: `https://odiak.net/${c.slug}`,
-        date: new Date(`${c.created.year}-${c.created.month}-${c.created.day} 00:00+9:00`),
+        date: new Date(`${c.created!.year}-${c.created!.month}-${c.created!.day} 00:00+9:00`),
         content: htmlContent
       })
     })

@@ -184,7 +184,7 @@ function removePrefixesFromNode(node: Node, prefix: string): boolean {
 
 async function saveContent(content: Content) {
   let contentStr = ''
-  if (Object.keys(content.rawData).length > 0) {
+  if (content.rawData != null && Object.keys(content.rawData as object).length > 0) {
     contentStr += '---\n'
     contentStr += dump(content.rawData) + '\n'
     contentStr += '---\n\n'

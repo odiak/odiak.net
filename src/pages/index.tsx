@@ -4,10 +4,10 @@ import Link from 'next/link'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
 
-type Props = { contents: Content[] }
+type Props = { mainContents: Content[]; subContents: Content[] }
 type Params = {}
 
-export default function Index({ contents }: Props) {
+export default function Index({ mainContents, subContents }: Props) {
   return (
     <>
       <MetaData />
@@ -16,13 +16,26 @@ export default function Index({ contents }: Props) {
 
       <main>
         <ul>
-          {contents.map(({ slug, title, created, isPinned }) => (
+          {mainContents.map(({ slug, title, created, isPinned }) => (
             <li key={slug}>
-              {!isPinned && <ShowDate date={created} />}
+              {!isPinned && <ShowDate date={created!} />}
               <Link href={`/${slug}`}>{title}</Link>
             </li>
           ))}
         </ul>
+
+        {
+          <>
+            <h2 className="h-other">その他</h2>
+            <ul className="subContents">
+              {subContents.map(({ slug, title }) => (
+                <li key={slug}>
+                  <Link href={`/${slug}`}>{title}</Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        }
       </main>
     </>
   )
@@ -30,10 +43,14 @@ export default function Index({ contents }: Props) {
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
   const contents = (await getAllContents()).filter((c) => !c.isIntermediate)
-  contents.sort(
+  const mainContents = contents.filter((c) => c.created != null)
+  mainContents.sort(
     (a, b) =>
-      -((a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) || compareDateLike(a.created, b.created))
+      -((a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) || compareDateLike(a.created!, b.created!))
   )
 
-  return { props: { contents } }
+  const subContents = contents.filter((c) => c.created == null)
+  subContents.sort((a, b) => compareDateLike(a.modified!, b.modified!))
+
+  return { props: { mainContents, subContents } }
 }

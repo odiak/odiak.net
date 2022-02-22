@@ -2,7 +2,7 @@ import glob from 'glob'
 import fs from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
-import { collectAllInternalLinks, getProcessor, Link } from './markdown'
+import { Link } from './markdown'
 
 export type LinkWithOneHopLinks = Link & {
   oneHopLinks?: Array<Link> | null
@@ -10,20 +10,39 @@ export type LinkWithOneHopLinks = Link & {
 
 export type DateLikeObject = { year: number; month: number; day: number }
 export type Content = {
+  name: string
   slug: string
+  rawData: Record<string, unknown>
   body: string
-  created: DateLikeObject
+  created: DateLikeObject | null
+  modified: DateLikeObject | null
   title: string
   isPinned: boolean
   isIntermediate: boolean
-  isLinkedFromMultipleContents?: boolean
-  outgoingLinks?: Array<LinkWithOneHopLinks> | null
-  incomingLinks?: Array<Link> | null
 }
 
 type Contents = Map<string, Content>
 
+export type MetaData = {
+  nameToSlugMap: Record<string, string>
+  slugToTitleMap: Record<string, string>
+  nameToLinksMap: Record<string, LinksInformation>
+}
+
+export type LinksInformation = {
+  isIntermediate: boolean
+  outgoing: Array<{
+    name: string
+    oneHopLinks: Array<{ name: string }>
+  }>
+  incoming: Array<{
+    name: string
+  }>
+}
+
 let contents: Promise<Contents> | undefined = undefined
+
+let metaData: Promise<MetaData> | undefined = undefined
 
 function extractDateFromBeginning(text: string): Date | undefined {
   const m = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
@@ -34,156 +53,51 @@ function extractDateFromBeginning(text: string): Date | undefined {
   return new Date(year, month - 1, day)
 }
 
-async function loadContent(fileName: string): Promise<Content> {
+export async function loadContent(fileName: string): Promise<Content> {
   const rawBody = await fs.readFile(`contents/${fileName}`, 'utf8')
 
-  const { content: body, data } = matter(rawBody)
+  const { content: body, data } = matter(rawBody) as {
+    content: string
+    data: Record<string, unknown>
+  }
 
-  const title = data.title ?? path.basename(fileName, '.md')
+  const name = path.basename(fileName, '.md')
+  const title = data.title ?? name
   if (typeof title !== 'string') throw Error(`Invalid title for ${fileName}`)
 
-  const slug = data.slug
+  const slug = data.slug ?? title
   if (typeof slug !== 'string') throw Error(`Invalid slug for ${fileName}`)
 
   let rawCreated = data.created ?? extractDateFromBeginning(slug)
-  if (!(rawCreated instanceof Date)) throw Error(`Invalid created date for ${fileName}`)
+  if (rawCreated != null && !(rawCreated instanceof Date))
+    throw Error(`Invalid created date for ${fileName}`)
 
-  const created = dateToDateLikeObject(rawCreated)
+  const created = rawCreated != null ? dateToDateLikeObject(rawCreated) : null
+
+  let modified: DateLikeObject | null = null
+  if (created == null) {
+    const stat = await fs.stat(`contents/${fileName}`)
+    modified = dateToDateLikeObject(stat.mtime)
+  }
 
   const isPinned = Boolean(data.pinned)
+  const isIntermediate = Boolean(data.intermediate)
 
-  return { slug, body, created, title, isPinned, isIntermediate: false }
+  return { name, slug, body, rawData: data, created, modified, title, isPinned, isIntermediate }
 }
 
-async function prepareContents(): Promise<Contents> {
-  const contents: Contents = new Map()
-  const promises = glob
-    .sync('contents/*.md')
-    .map((s) => path.basename(s))
-    .map((f) =>
-      loadContent(f).then((content) => {
-        contents.set(content.slug, content)
-      })
+export function ensureContents(): Promise<Contents> {
+  if (contents !== undefined) return contents
+
+  return (contents = (async () => {
+    const contentsArray = await Promise.all(
+      glob
+        .sync('contents/*.md')
+        .map((filePath) => path.basename(filePath))
+        .map((baseName) => loadContent(baseName))
     )
-  await Promise.all(promises)
-
-  const processor = getProcessor(Array.from(contents.values()))
-  const existingSlugs = new Set([...contents.values()].map((c) => c.slug))
-  const unknownSlugs = new Set<string>()
-  const intermediateSlugs = new Set<string>()
-  const nameBySlug = new Map<string, string>()
-  const directLinkMap = new Map<string, Link[]>()
-  for (const content of contents.values()) {
-    const node = processor.parse(content.body)
-    const links = collectAllInternalLinks(node)
-    if (links.length === 0) continue
-    directLinkMap.set(content.slug, links)
-    for (const link of links) {
-      const { slug, name } = link
-      if (!existingSlugs.has(slug)) {
-        nameBySlug.set(slug, name)
-        if (unknownSlugs.has(slug)) {
-          intermediateSlugs.add(slug)
-        } else {
-          unknownSlugs.add(slug)
-        }
-      }
-    }
-  }
-
-  // create non-existing pages
-  for (const slug of unknownSlugs) {
-    const name = nameBySlug.get(slug)!
-    contents.set(slug, {
-      body: '',
-      title: name,
-      slug: slug,
-      isPinned: false,
-      isIntermediate: true,
-      isLinkedFromMultipleContents: intermediateSlugs.has(slug),
-      created: { year: 0, month: 1, day: 1 }
-    })
-  }
-
-  // normalize name of links
-  for (const [slug, links] of directLinkMap) {
-    directLinkMap.set(
-      slug,
-      links.map(({ slug }) => ({ slug, name: contents.get(slug)!.title }))
-    )
-  }
-
-  // prepare incoming links
-  for (const [fromSlug, links] of directLinkMap) {
-    const fromContent = contents.get(fromSlug)!
-    const outgoingLinks = (fromContent.outgoingLinks ??= [])
-    outgoingLinks.push(...links)
-    for (const { slug: toSlug } of links) {
-      const toContent = contents.get(toSlug)!
-      const incomingLinks = (toContent.incomingLinks ??= [])
-      incomingLinks.push({ slug: fromSlug, name: fromContent.title })
-    }
-  }
-
-  // remove some outgoing links
-  for (const content of contents.values()) {
-    if (content.outgoingLinks == null) continue
-    content.outgoingLinks = content.outgoingLinks.filter(
-      ({ slug }) => contents.get(slug)!.isLinkedFromMultipleContents !== false
-    )
-    if (content.outgoingLinks.length === 0) {
-      content.outgoingLinks = null
-    }
-  }
-
-  // prepare one-hop links
-  for (const [fromSlug, links] of directLinkMap) {
-    const fromContent = contents.get(fromSlug)!
-    for (const { slug: toSlug } of links) {
-      const toContent = contents.get(toSlug)!
-      const linksToAdd = toContent.incomingLinks!.filter((link) => link.slug !== fromSlug)
-      if (linksToAdd.length === 0) continue
-      if (fromContent.outgoingLinks == null) continue
-      const outgoingLink = fromContent.outgoingLinks.find((link) => link.slug === toSlug)!
-      const links = (outgoingLink.oneHopLinks ??= [])
-      links.push(...linksToAdd)
-    }
-  }
-
-  // remove duplicated links
-  for (const content of contents.values()) {
-    const slugs = new Set(content.outgoingLinks?.map((link) => link.slug))
-    if (content.incomingLinks != null) {
-      content.incomingLinks = content.incomingLinks.filter((link) => !slugs.has(link.slug))
-      for (const { slug } of content.incomingLinks) slugs.add(slug)
-    }
-    if (content.outgoingLinks != null) {
-      for (const outLink of content.outgoingLinks) {
-        if (outLink.oneHopLinks != null) {
-          outLink.oneHopLinks = outLink.oneHopLinks.filter((link) => !slugs.has(link.slug))
-          for (const { slug } of outLink.oneHopLinks) slugs.add(slug)
-        }
-      }
-    }
-  }
-
-  return contents
-}
-
-export async function ensureContents(forceReload: boolean = false): Promise<Contents> {
-  const oldContents = contents
-  if (!forceReload && oldContents) return oldContents
-
-  // wait for previous loading
-  const oldContentsValue = await oldContents
-
-  const newContents = prepareContents().catch((e) => {
-    console.error(e)
-    if (oldContentsValue) return oldContentsValue
-    throw e
-  })
-  contents = newContents
-  return newContents
+    return new Map(contentsArray.map((c) => [c.slug, c]))
+  })())
 }
 
 function dateToDateLikeObject(date: Date): DateLikeObject {
@@ -212,4 +126,13 @@ export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number 
   const { year: year1, month: month1, day: day1 } = d1
   const { year: year2, month: month2, day: day2 } = d2
   return year1 - year2 || month1 - month2 || day1 - day2
+}
+
+export function getMetaData(): Promise<MetaData> {
+  if (metaData !== undefined) return metaData
+
+  return (metaData = (async () => {
+    const raw = await fs.readFile('contents/metadata.json', 'utf8')
+    return JSON.parse(raw) as MetaData
+  })())
 }

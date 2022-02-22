@@ -1,6 +1,15 @@
 import { google } from 'googleapis'
 import fs from 'fs'
 import fsp from 'fs/promises'
+import { loadContent, Content, LinksInformation, MetaData } from './contents'
+import path from 'path'
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import wikiLinkPlugin from 'remark-wiki-link'
+import { collectAllInternalLinks } from './markdown'
+import { dump } from 'js-yaml'
+import { Node } from 'unist'
+import remarkStringify from 'remark-stringify'
 
 export async function downloadContents() {
   const credentials = JSON.parse(process.env['GOOGLE_CREDENTIALS'] ?? '{}')
@@ -16,27 +25,170 @@ export async function downloadContents() {
   await fsp.mkdir('contents')
 
   let pageToken: string | undefined
-  const promises: Array<Promise<never>> = []
+  const promises: Array<Promise<unknown>> = []
+  const names: Array<string> = []
   do {
-    const data = (await drive.files.list({ q: `'${folderId}' in parents`, pageToken })).data
+    const data = (
+      await drive.files.list({
+        q: `'${folderId}' in parents`,
+        pageToken,
+        fields: 'files(id,name,modifiedTime)'
+      })
+    ).data
     if (data.files) {
       for (const file of data.files) {
+        if (!file.name!.endsWith('.md')) continue
+
+        names.push(path.basename(file.name!, '.md'))
         console.log(`downloading ${file.name}`)
-        drive.files
-          .get({ fileId: file.id ?? undefined, alt: 'media' }, { responseType: 'stream' })
-          .then(({ data: stream }) => {
-            stream.pipe(fs.createWriteStream(`contents/${file.name}`))
-            promises.push(
-              new Promise((resolve) => {
-                stream.on('end', resolve)
-              })
-            )
+        const filePath = `contents/${file.name}`
+        const promise = drive.files
+          .get({ fileId: file.id!, alt: 'media' }, { responseType: 'stream' })
+          .then(async ({ data: stream }) => {
+            stream.pipe(fs.createWriteStream(filePath))
+            await new Promise((resolve) => {
+              stream.on('end', resolve)
+            })
+            const updated = new Date(file.modifiedTime!)
+            await new Promise((resolve) => setTimeout(resolve, 300))
+            await fsp.utimes(filePath, updated, updated)
           })
+        promises.push(promise)
       }
     }
     pageToken = data.nextPageToken ?? undefined
   } while (pageToken)
   await Promise.all(promises)
+
+  await preprocessContents(names)
+}
+
+async function preprocessContents(names: string[]) {
+  const processor = unified()
+    .use(remarkParse)
+    .use(wikiLinkPlugin, {
+      permalinks: [],
+      pageResolver: (name: string): string[] => [name],
+      hrefTemplate: (slug: string) => `/${slug}`
+    })
+    .use(remarkStringify, {
+      bullet: '-'
+    })
+
+  const nameToSlugMap = new Map<string, string>()
+  const slugToTitleMap = new Map<string, string>()
+
+  const contents: Content[] = []
+  for (const name of names) {
+    const content = await loadContent(`${name}.md`)
+    contents.push(content)
+    nameToSlugMap.set(name, content.slug)
+    slugToTitleMap.set(content.slug, content.title)
+  }
+
+  const singletonNames = new Set<string>()
+
+  function getCanonicalName(name: string): string {
+    const matchedName = Array.from(nameToSlugMap.keys()).find(
+      (n) => n.toLowerCase() === name.toLowerCase()
+    )
+    if (matchedName) return matchedName
+    const slug = name
+    nameToSlugMap.set(name, slug)
+    singletonNames.add(name)
+    slugToTitleMap.set(slug, name)
+    return name
+  }
+
+  const nameToLinksMap = new Map<string, LinksInformation>()
+  for (const content of contents) {
+    const linksInfo: LinksInformation = { incoming: [], outgoing: [], isIntermediate: false }
+    nameToLinksMap.set(content.name, linksInfo)
+
+    const node = processor.parse(content.body)
+    const modified = removePrefixesFromNode(node, 'public/')
+    if (modified) {
+      content.body = processor.stringify(node)
+      await saveContent(content)
+    }
+
+    const links = collectAllInternalLinks(node)
+    for (const { name: linkName } of links) {
+      const canonicalName = getCanonicalName(linkName)
+      if (!nameToLinksMap.has(canonicalName)) {
+        nameToLinksMap.set(canonicalName, { incoming: [], outgoing: [], isIntermediate: true })
+      }
+      const targetLinksInfo = nameToLinksMap.get(canonicalName)!
+      if (!targetLinksInfo.incoming.find((li) => li.name === content.name)) {
+        targetLinksInfo.incoming.push({ name: content.name })
+      }
+      if (targetLinksInfo.incoming.length >= 2) {
+        singletonNames.delete(canonicalName)
+      }
+
+      if (!linksInfo.outgoing.find((li) => li.name === canonicalName)) {
+        linksInfo.outgoing.push({ name: canonicalName, oneHopLinks: [] })
+      }
+    }
+  }
+
+  for (const [name, linksInfo] of nameToLinksMap) {
+    linksInfo.outgoing = linksInfo.outgoing.filter((li) => !singletonNames.has(li.name))
+    for (const li of linksInfo.outgoing) {
+      li.oneHopLinks = nameToLinksMap.get(li.name)!.incoming.filter((li) => li.name !== name)
+    }
+
+    if (linksInfo.isIntermediate) {
+      await fsp.writeFile(
+        `contents/${name}.md`,
+        `---
+intermediate: true
+---`
+      )
+    }
+  }
+
+  const metaData: MetaData = {
+    nameToSlugMap: mapToObject(nameToSlugMap),
+    slugToTitleMap: mapToObject(slugToTitleMap),
+    nameToLinksMap: mapToObject(nameToLinksMap)
+  }
+  await fsp.writeFile('contents/metadata.json', JSON.stringify(metaData))
+}
+
+function mapToObject<T>(map: Map<string, T>): Record<string, T> {
+  return Object.fromEntries(map.entries())
+}
+
+function removePrefix(str: string, prefix: string): string {
+  if (str.startsWith(prefix)) {
+    return str.slice(prefix.length)
+  }
+  return str
+}
+
+function removePrefixesFromNode(node: Node, prefix: string): boolean {
+  let modified = false
+  if (node.type === 'wikiLink') {
+    node.value = node.data!.alias = removePrefix(node.value as string, prefix)
+    modified = true
+  }
+  if (!Array.isArray(node.children)) return modified
+  for (const child of node.children as Node[]) {
+    modified = removePrefixesFromNode(child, prefix) || modified
+  }
+  return modified
+}
+
+async function saveContent(content: Content) {
+  let contentStr = ''
+  if (Object.keys(content.rawData).length > 0) {
+    contentStr += '---\n'
+    contentStr += dump(content.rawData) + '\n'
+    contentStr += '---\n\n'
+  }
+  contentStr += content.body
+  await fsp.writeFile(`contents/${content.name}.md`, contentStr)
 }
 
 downloadContents()

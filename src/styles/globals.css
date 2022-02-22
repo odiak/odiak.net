@@ -86,3 +86,8 @@ main blockquote {
   padding: 1px 8px 1px 20px;
   border-left: 4px solid #aaa;
 }
+
+.h-other {
+  font-weight: normal;
+  font-size: 18px;
+}

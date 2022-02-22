@@ -1,4 +1,4 @@
-import { Content, getAllSlugs, getContent, getAllContents } from '../contents'
+import { Content, getAllSlugs, getContent, getMetaData } from '../contents'
 import { GetStaticPaths, GetStaticProps } from 'next'
 import { ShowDate } from '../components/ShowDate'
 import { MetaData } from '../components/MetaData'
@@ -13,60 +13,66 @@ import remarkBreaks from 'remark-breaks'
 
 type Props = {
   content: Content
-  contents: Content[]
+  linksInfo: {
+    incoming: Array<{ slug: string; title: string; name: string }>
+    outgoing: Array<{
+      slug: string
+      title: string
+      name: string
+      oneHopLinks: Array<{ slug: string; title: string; name: string }>
+    }>
+  }
 }
 type Params = {
   slug: string
 }
 
-export default function ShowContent({ content, contents }: Props) {
+export default function ShowContent({ content, linksInfo }: Props) {
   return (
     <>
       <MetaData title={content.title} />
 
       <main>
         <h1>{content.title}</h1>
-        {!content.isIntermediate && <ShowDate date={content.created} />}
+        {!content.isIntermediate && content.created && <ShowDate date={content.created} />}
         {
           unified()
             .use(remarkParse)
             .use(remarkGfm)
             .use(remarkBreaks)
             .use(wikiLinkPlugin, {
-              permalinks: contents
-                .filter((c) => c.isLinkedFromMultipleContents !== false)
-                .map((c) => c.slug),
+              permalinks: linksInfo.outgoing.map((li) => `/${li.slug}`),
               pageResolver: (name: string) =>
-                contents
-                  .filter((c) => c.title.toLowerCase() === name.toLowerCase())
-                  .map((c) => c.slug),
+                linksInfo.outgoing
+                  .filter((li) => li.name.toLowerCase() === name.toLowerCase())
+                  .map((li) => li.slug),
               hrefTemplate: (slug: string) => `/${slug}`
             })
             .use(remarkReact, { sanitize: schema, createElement })
             .processSync(content.body).result
         }
       </main>
-      {(content.incomingLinks != null || content.outgoingLinks != null) && (
+      {(linksInfo.incoming.length > 0 || linksInfo.outgoing.length > 0) && (
         <aside className="related-contents">
-          <header>関連リンク</header>
+          <header>関連ページ</header>
           <ul>
-            {content.outgoingLinks?.map(({ name, slug, oneHopLinks }) => (
+            {linksInfo.outgoing.map(({ title, slug, oneHopLinks }) => (
               <li key={slug}>
-                <a href={`/${slug}`}>{name}</a>
+                <a href={`/${slug}`}>{title}</a>
                 {oneHopLinks != null && (
                   <ul>
-                    {oneHopLinks.map(({ slug, name }) => (
+                    {oneHopLinks.map(({ slug, title }) => (
                       <li key={slug}>
-                        <a href={`/${slug}`}>{name}</a>
+                        <a href={`/${slug}`}>{title}</a>
                       </li>
                     ))}
                   </ul>
                 )}
               </li>
             ))}
-            {content.incomingLinks?.map(({ name, slug }) => (
+            {linksInfo.incoming.map(({ title, slug }) => (
               <li key={slug}>
-                <a href={`/${slug}`}>{name}</a>
+                <a href={`/${slug}`}>{title}</a>
               </li>
             ))}
           </ul>
@@ -80,8 +86,23 @@ export const getStaticProps: GetStaticProps<Props, Params> = async (context) => 
   const { slug } = context.params!
 
   const content = await getContent(slug)
-  const contents = await getAllContents()
-  return { props: { content, contents } }
+  const metaData = await getMetaData()
+  const rawLinksInfo = metaData.nameToLinksMap[content.name]
+
+  function convert({ name }: { name: string }) {
+    const slug = metaData.nameToSlugMap[name]
+    const title = metaData.slugToTitleMap[slug]
+    return { name, slug, title }
+  }
+
+  const linksInfo = {
+    incoming: rawLinksInfo.incoming.map(convert),
+    outgoing: rawLinksInfo.outgoing.map((li) => ({
+      ...convert(li),
+      oneHopLinks: li.oneHopLinks.map(convert)
+    }))
+  }
+  return { props: { content, linksInfo } }
 }
 
 export const getStaticPaths: GetStaticPaths<Params> = async () => {

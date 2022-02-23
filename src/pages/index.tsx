@@ -15,7 +15,7 @@ export default function Index({ mainContents, subContents }: Props) {
       <p>岩本海童の個人的なウェブサイトです。</p>
 
       <main>
-        <ul>
+        <ul className="main-contents-list">
           {mainContents.map(({ slug, title, created, isPinned }) => (
             <li key={slug}>
               {!isPinned && <ShowDate date={created!} />}
@@ -27,7 +27,7 @@ export default function Index({ mainContents, subContents }: Props) {
         {
           <>
             <h2 className="h-other">その他</h2>
-            <ul className="subContents">
+            <ul className="sub-contents-list">
               {subContents.map(({ slug, title }) => (
                 <li key={slug}>
                   <Link href={`/${slug}`}>{title}</Link>
@@ -44,7 +44,7 @@ export default function Index({ mainContents, subContents }: Props) {
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
   const contents = (await getAllContents())
     .filter((c) => !c.isIntermediate)
-    .map((c) => ({ ...c, rawData: null }))
+    .map((c): Content => ({ ...c, rawData: null }))
   const mainContents = contents.filter((c) => c.created != null)
   mainContents.sort(
     (a, b) =>

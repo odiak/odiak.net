@@ -91,3 +91,25 @@ main blockquote {
   font-weight: normal;
   font-size: 18px;
 }
+
+ul.main-contents-list {
+  list-style: none;
+  padding: 0;
+}
+
+ul.sub-contents-list {
+  padding: 0;
+  list-style: none;
+}
+
+ul.sub-contents-list > li {
+  display: inline-block;
+}
+
+ul.sub-contents-list > li:not(:last-child):after {
+  display: inline-block;
+  content: '/';
+  margin-left: 10px;
+  margin-right: 10px;
+  display: inline-block;
+}

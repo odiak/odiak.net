@@ -42,16 +42,14 @@ export default function Index({ mainContents, subContents }: Props) {
 }
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
-  const contents = (await getAllContents())
-    .filter((c) => !c.isIntermediate)
-    .map((c): Content => ({ ...c, rawData: null }))
-  const mainContents = contents.filter((c) => c.created != null)
+  const contents = (await getAllContents()).filter((c) => !c.isIntermediate && !c.isArchived)
+  const mainContents = contents.filter((c) => !c.isRandom)
   mainContents.sort(
     (a, b) =>
       -((a.isPinned ? 1 : 0) - (b.isPinned ? 1 : 0) || compareDateLike(a.created!, b.created!))
   )
 
-  const subContents = contents.filter((c) => c.created == null)
+  const subContents = contents.filter((c) => c.isRandom)
   subContents.sort((a, b) => compareDateLike(a.modified!, b.modified!))
 
   return { props: { mainContents, subContents } }

@@ -32,7 +32,7 @@ async function generateFeed() {
   const contents = await getAllContents()
 
   contents
-    .filter((c) => !c.isIntermediate && c.created != null)
+    .filter((c) => !c.isIntermediate && !c.isRandom && !c.isArchived)
     .sort((a, b) => -compareDateLike(a.created!, b.created!))
     .forEach((c) => {
       const htmlContent = unified()

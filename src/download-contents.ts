@@ -1,5 +1,4 @@
 import { google } from 'googleapis'
-import fs from 'fs'
 import fsp from 'fs/promises'
 import { loadContent, Content, LinksInformation, MetaData } from './contents'
 import path from 'path'
@@ -7,9 +6,9 @@ import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import wikiLinkPlugin from 'remark-wiki-link'
 import { collectAllInternalLinks } from './markdown'
-import { dump } from 'js-yaml'
 import { Node } from 'unist'
 import remarkStringify from 'remark-stringify'
+import matter from 'gray-matter'
 
 export async function downloadContents() {
   const credentials = JSON.parse(process.env['GOOGLE_CREDENTIALS'] ?? '{}')
@@ -32,7 +31,7 @@ export async function downloadContents() {
       await drive.files.list({
         q: `'${folderId}' in parents`,
         pageToken,
-        fields: 'files(id,name,modifiedTime)'
+        fields: 'files(id,name,createdTime,modifiedTime)'
       })
     ).data
     if (data.files) {
@@ -45,13 +44,22 @@ export async function downloadContents() {
         const promise = drive.files
           .get({ fileId: file.id!, alt: 'media' }, { responseType: 'stream' })
           .then(async ({ data: stream }) => {
-            stream.pipe(fs.createWriteStream(filePath))
-            await new Promise((resolve) => {
-              stream.on('end', resolve)
+            const chunks: Buffer[] = []
+            stream.on('data', (chunk) => {
+              chunks.push(Buffer.from(chunk))
             })
-            const updated = new Date(file.modifiedTime!)
-            await new Promise((resolve) => setTimeout(resolve, 300))
-            await fsp.utimes(filePath, updated, updated)
+            await new Promise((resolve, reject) => {
+              stream.on('error', reject)
+              stream.on('end', async () => {
+                let content = Buffer.concat(chunks).toString('utf8')
+                const { content: body, data } = matter(content)
+                data.fileCreated = new Date(file.createdTime!)
+                data.fileModified = new Date(file.modifiedTime!)
+                content = matter.stringify(body, data)
+                fsp.writeFile(filePath, content, 'utf8')
+                resolve(undefined)
+              })
+            })
           })
         promises.push(promise)
       }
@@ -80,7 +88,7 @@ async function preprocessContents(names: string[]) {
 
   const contents: Content[] = []
   for (const name of names) {
-    const content = await loadContent(`${name}.md`)
+    const content = await loadContent(`${name}.md`, true)
     contents.push(content)
     nameToSlugMap.set(name, content.slug)
     slugToTitleMap.set(content.slug, content.title)
@@ -109,7 +117,10 @@ async function preprocessContents(names: string[]) {
     const modified = removePrefixesFromNode(node, 'public/')
     if (modified) {
       content.body = processor.stringify(node)
-      await saveContent(content)
+      await fsp.writeFile(
+        `contents/${content.name}.md`,
+        matter.stringify(content.body, content.rawData as Record<string, unknown>)
+      )
     }
 
     const links = collectAllInternalLinks(node)
@@ -180,17 +191,6 @@ function removePrefixesFromNode(node: Node, prefix: string): boolean {
     modified = removePrefixesFromNode(child, prefix) || modified
   }
   return modified
-}
-
-async function saveContent(content: Content) {
-  let contentStr = ''
-  if (content.rawData != null && Object.keys(content.rawData as object).length > 0) {
-    contentStr += '---\n'
-    contentStr += dump(content.rawData) + '\n'
-    contentStr += '---\n\n'
-  }
-  contentStr += content.body
-  await fsp.writeFile(`contents/${content.name}.md`, contentStr)
 }
 
 function filterLinks(links: LinksInformation, nameToSlug: Map<string, string>) {

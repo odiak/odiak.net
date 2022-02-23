@@ -12,10 +12,12 @@ export type DateLikeObject = { year: number; month: number; day: number }
 export type Content = {
   name: string
   slug: string
-  rawData: unknown
+  rawData: Record<string, unknown> | null
   body: string
   created: DateLikeObject | null
   modified: DateLikeObject | null
+  isRandom: boolean
+  isArchived: boolean
   title: string
   isPinned: boolean
   isIntermediate: boolean
@@ -53,7 +55,16 @@ function extractDateFromBeginning(text: string): Date | undefined {
   return new Date(year, month - 1, day)
 }
 
-export async function loadContent(fileName: string): Promise<Content> {
+function ensureString(v: unknown, name = 'value'): asserts v is string {
+  if (typeof v !== 'string') {
+    throw new Error(`Unexpected ${name}: ${v}`)
+  }
+}
+
+export async function loadContent(
+  fileName: string,
+  includeRawData: boolean = false
+): Promise<Content> {
   const rawBody = await fs.readFile(`contents/${fileName}`, 'utf8')
 
   const { content: body, data } = matter(rawBody) as {
@@ -63,27 +74,33 @@ export async function loadContent(fileName: string): Promise<Content> {
 
   const name = path.basename(fileName, '.md')
   const title = data.title ?? name
-  if (typeof title !== 'string') throw Error(`Invalid title for ${fileName}`)
+  ensureString(title, 'title')
 
-  const slug = data.slug ?? title
-  if (typeof slug !== 'string') throw Error(`Invalid slug for ${fileName}`)
+  const slug = data.slug ?? name
+  ensureString(slug, 'slug')
 
-  let rawCreated = data.created ?? extractDateFromBeginning(slug)
-  if (rawCreated != null && !(rawCreated instanceof Date))
-    throw Error(`Invalid created date for ${fileName}`)
-
-  const created = rawCreated != null ? dateToDateLikeObject(rawCreated) : null
-
-  let modified: DateLikeObject | null = null
-  if (created == null) {
-    const stat = await fs.stat(`contents/${fileName}`)
-    modified = dateToDateLikeObject(stat.mtime)
-  }
+  const explicitRawCreated = data.created ?? extractDateFromBeginning(slug)
+  const isRandom = explicitRawCreated == null
+  const created = dateToDateLikeObject(explicitRawCreated ?? data.fileCreated)
+  const modified = dateToDateLikeObject(data.fileModified)
 
   const isPinned = Boolean(data.pinned)
   const isIntermediate = Boolean(data.intermediate)
+  const isArchived = Boolean(data.archived)
 
-  return { name, slug, body, rawData: data, created, modified, title, isPinned, isIntermediate }
+  return {
+    name,
+    slug,
+    body,
+    rawData: includeRawData ? data : null,
+    created,
+    modified,
+    isRandom,
+    title,
+    isPinned,
+    isIntermediate,
+    isArchived
+  }
 }
 
 export function ensureContents(): Promise<Contents> {
@@ -100,7 +117,11 @@ export function ensureContents(): Promise<Contents> {
   })())
 }
 
-function dateToDateLikeObject(date: Date): DateLikeObject {
+function dateToDateLikeObject(date: unknown): DateLikeObject | null {
+  if (date == null) return null
+  if (!(date instanceof Date)) {
+    throw new Error(`not date: ${date}`)
+  }
   return {
     year: date.getFullYear(),
     month: date.getMonth() + 1,

@@ -23,7 +23,7 @@ const All: FC<Props> = ({ contents }) => (
 export default All
 
 export const getStaticProps: GetStaticProps<Props, Params> = async () => {
-  const contents = await (await getAllContents()).map((c): Content => ({ ...c, rawData: null }))
+  const contents = await getAllContents()
 
   return { props: { contents } }
 }

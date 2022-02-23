@@ -8,6 +8,7 @@ import { unified } from 'unified'
 import remarkHtml from 'remark-html'
 import { compareDateLike, getAllContents } from './contents'
 import remarkBreaks from 'remark-breaks'
+import { makeDescription } from './utils/makeDescription'
 
 async function generateFeed() {
   const feed = new Feed({
@@ -50,6 +51,7 @@ async function generateFeed() {
 
       feed.addItem({
         title: c.title,
+        description: makeDescription(c.body),
         id: `https://odiak.net/${c.slug}`,
         link: `https://odiak.net/${c.slug}`,
         date: new Date(`${c.created!.year}-${c.created!.month}-${c.created!.day} 00:00+9:00`),

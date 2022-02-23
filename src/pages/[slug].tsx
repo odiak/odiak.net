@@ -10,6 +10,7 @@ import { schema } from '../markdown-sanitization-schema'
 import remarkGfm from 'remark-gfm'
 import { createElement } from 'react'
 import remarkBreaks from 'remark-breaks'
+import { makeDescription } from '../utils/makeDescription'
 
 type Props = {
   content: Content
@@ -29,9 +30,26 @@ type Params = {
 }
 
 export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props) {
+  const bodyElements = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkBreaks)
+    .use(wikiLinkPlugin, {
+      permalinks: Object.values(nameToSlugMap)
+        .filter(({ isIntermediate }) => !isIntermediate)
+        .map(({ slug }) => `/${slug}`),
+      pageResolver: (name: string) =>
+        name in nameToSlugMap ? [`/${nameToSlugMap[name].slug}`] : [],
+      hrefTemplate: (href: string) => href
+    })
+    .use(remarkReact, { sanitize: schema, createElement })
+    .processSync(content.body).result
+
+  const description = makeDescription(content.body)
+
   return (
     <>
-      <MetaData title={content.title} />
+      <MetaData title={content.title} description={description} />
 
       <main>
         <h1>{content.title}</h1>
@@ -46,22 +64,7 @@ export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props
             </div>
           </>
         )}
-        {
-          unified()
-            .use(remarkParse)
-            .use(remarkGfm)
-            .use(remarkBreaks)
-            .use(wikiLinkPlugin, {
-              permalinks: Object.values(nameToSlugMap)
-                .filter(({ isIntermediate }) => !isIntermediate)
-                .map(({ slug }) => `/${slug}`),
-              pageResolver: (name: string) =>
-                name in nameToSlugMap ? [`/${nameToSlugMap[name].slug}`] : [],
-              hrefTemplate: (href: string) => href
-            })
-            .use(remarkReact, { sanitize: schema, createElement })
-            .processSync(content.body).result
-        }
+        {bodyElements}
       </main>
       {(linksInfo.incoming.length > 0 || linksInfo.outgoing.length > 0) && (
         <aside className="related-contents">

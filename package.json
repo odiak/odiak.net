@@ -25,6 +25,7 @@
     "remark-react": "^9.0.1",
     "remark-stringify": "^10.0.2",
     "remark-wiki-link": "^1.0.4",
+    "strip-markdown": "^5.0.0",
     "unified": "^10.0.0"
   },
   "devDependencies": {

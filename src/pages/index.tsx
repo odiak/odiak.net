@@ -18,7 +18,7 @@ export default function Index({ mainContents, subContents }: Props) {
         <ul className="main-contents-list">
           {mainContents.map(({ slug, title, created, isPinned }) => (
             <li key={slug}>
-              {!isPinned && <ShowDate date={created!} />}
+              {!isPinned && <ShowDate date={created} />}
               <Link href={`/${slug}`}>{title}</Link>
             </li>
           ))}

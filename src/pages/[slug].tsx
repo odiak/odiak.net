@@ -35,7 +35,17 @@ export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props
 
       <main>
         <h1>{content.title}</h1>
-        {!content.isIntermediate && content.created && <ShowDate date={content.created} />}
+        {!content.isIntermediate && !content.isRandom && <ShowDate date={content.created!} />}
+        {content.isRandom && (
+          <>
+            <div>
+              作成: <ShowDate date={content.created} />
+            </div>
+            <div>
+              更新: <ShowDate date={content.modified} />
+            </div>
+          </>
+        )}
         {
           unified()
             .use(remarkParse)

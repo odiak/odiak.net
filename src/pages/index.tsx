@@ -50,7 +50,7 @@ export const getStaticProps: GetStaticProps<Props, Params> = async () => {
   )
 
   const subContents = contents.filter((c) => c.isRandom)
-  subContents.sort((a, b) => compareDateLike(a.modified!, b.modified!))
+  subContents.sort((a, b) => -compareDateLike(a.modified!, b.modified!))
 
   return { props: { mainContents, subContents } }
 }

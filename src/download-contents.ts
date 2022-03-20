@@ -108,10 +108,11 @@ async function preprocessContents(names: string[]) {
     return name
   }
 
-  const nameToLinksMap = new Map<string, LinksInformation>()
+  const nameToLinksMap = new Map<string, LinksInformation>(
+    contents.map(({ name }) => [name, { incoming: [], outgoing: [], isIntermediate: false }])
+  )
   for (const content of contents) {
-    const linksInfo: LinksInformation = { incoming: [], outgoing: [], isIntermediate: false }
-    nameToLinksMap.set(content.name, linksInfo)
+    const linksInfo = nameToLinksMap.get(content.name)!
 
     const node = processor.parse(content.body)
     const modified = removePrefixesFromNode(node, 'public/')

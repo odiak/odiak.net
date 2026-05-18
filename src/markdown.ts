@@ -4,6 +4,10 @@ import wikiLinkPlugin from 'remark-wiki-link'
 import { Content } from './contents'
 import { Node } from 'unist'
 
+type TraversableNode = Node & {
+  children?: TraversableNode[]
+}
+
 export function getProcessor(contents: Content[]) {
   return unified()
     .use(remarkParse)
@@ -23,19 +27,19 @@ export type Link = {
   slug: string
 }
 
-function collectAllLinks(content: Node, links: Map<string, Link>) {
+function collectAllLinks(content: TraversableNode, links: Map<string, Link>) {
   if (content.type === 'wikiLink') {
     const data = content.data as { permalink: string; alias: string }
     links.set(data.permalink, { name: data.alias, slug: data.permalink })
   }
   if (content.children == null) return
-  for (const child of content.children as Node[]) {
+  for (const child of content.children) {
     collectAllLinks(child, links)
   }
 }
 
 export function collectAllInternalLinks(content: Node): Link[] {
   const links = new Map<string, Link>()
-  collectAllLinks(content, links)
+  collectAllLinks(content as TraversableNode, links)
   return Array.from(links.values())
 }

@@ -1,4 +1,4 @@
-import glob from 'glob'
+import { globSync } from 'glob'
 import fs from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
@@ -107,8 +107,7 @@ export function ensureContents(): Promise<Contents> {
 
   return (contents = (async () => {
     const contentsArray = await Promise.all(
-      glob
-        .sync('contents/*.md')
+      globSync('contents/*.md')
         .map((filePath) => path.basename(filePath))
         .map((baseName) => loadContent(baseName))
     )

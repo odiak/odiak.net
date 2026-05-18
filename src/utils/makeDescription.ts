@@ -7,6 +7,11 @@ import strip from 'strip-markdown'
 import remarkStringify from 'remark-stringify'
 import { Node } from 'unist'
 
+type MarkdownNode = Node & {
+  value?: string
+  children?: MarkdownNode[]
+}
+
 export function makeDescription(content: string): string {
   return unified()
     .use(remarkParse)
@@ -23,15 +28,15 @@ export function makeDescription(content: string): string {
 }
 
 function stripWikiLink(): (node: Node) => Node {
-  function strip(node: Node): Node {
+  function strip(node: MarkdownNode): MarkdownNode {
     if (node.type === 'wikiLink') {
       return { type: 'text', value: node.value }
     }
     if (!Array.isArray(node.children)) {
       return node
     }
-    return { ...node, children: (node.children as Node[]).map(strip) }
+    return { ...node, children: node.children.map(strip) }
   }
 
-  return strip
+  return (node) => strip(node as MarkdownNode)
 }

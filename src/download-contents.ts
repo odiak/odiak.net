@@ -181,14 +181,20 @@ function removePrefix(str: string, prefix: string): string {
   return str
 }
 
-function removePrefixesFromNode(node: Node, prefix: string): boolean {
+type MarkdownNode = Node & {
+  value?: string
+  data?: { alias?: string }
+  children?: MarkdownNode[]
+}
+
+function removePrefixesFromNode(node: MarkdownNode, prefix: string): boolean {
   let modified = false
   if (node.type === 'wikiLink') {
     node.value = node.data!.alias = removePrefix(node.value as string, prefix)
     modified = true
   }
   if (!Array.isArray(node.children)) return modified
-  for (const child of node.children as Node[]) {
+  for (const child of node.children) {
     modified = removePrefixesFromNode(child, prefix) || modified
   }
   return modified

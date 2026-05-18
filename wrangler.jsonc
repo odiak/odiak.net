@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "odiak-net",
+  "name": "website",
+  "account_id": "111a8a6008b30bfbd3effc5cd726583f",
   "main": "./workers/app.ts",
   "compatibility_date": "2026-05-17",
   "compatibility_flags": ["nodejs_compat"],

@@ -6,7 +6,7 @@ import remarkParse from 'remark-parse'
 import wikiLinkPlugin from 'remark-wiki-link'
 import { unified } from 'unified'
 import remarkHtml from 'remark-html'
-import { compareDateLike, getAllContents } from './contents'
+import { compareDateLike, getAllContents } from './node-contents'
 import remarkBreaks from 'remark-breaks'
 import { makeDescription } from './utils/makeDescription'
 

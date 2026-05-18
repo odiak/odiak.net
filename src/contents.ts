@@ -1,8 +1,5 @@
-import glob from 'glob'
-import fs from 'fs/promises'
-import path from 'path'
-import matter from 'gray-matter'
 import { Link } from './markdown'
+import contentData from 'virtual:content-data'
 
 export type LinkWithOneHopLinks = Link & {
   oneHopLinks?: Array<Link> | null
@@ -23,8 +20,6 @@ export type Content = {
   isIntermediate: boolean
 }
 
-type Contents = Map<string, Content>
-
 export type MetaData = {
   nameToSlugMap: Record<string, string>
   slugToTitleMap: Record<string, string>
@@ -42,105 +37,23 @@ export type LinksInformation = {
   }>
 }
 
-let contents: Promise<Contents> | undefined = undefined
-
-let metaData: Promise<MetaData> | undefined = undefined
-
-function extractDateFromBeginning(text: string): Date | undefined {
-  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})(?=\D|$)/)
-  if (m === null) return
-  const year = parseInt(m[1], 10)
-  const month = parseInt(m[2], 10)
-  const day = parseInt(m[3], 10)
-  return new Date(year, month - 1, day)
-}
-
-function ensureString(v: unknown, name = 'value'): asserts v is string {
-  if (typeof v !== 'string') {
-    throw new Error(`Unexpected ${name}: ${v}`)
-  }
-}
-
-export async function loadContent(
-  fileName: string,
-  includeRawData: boolean = false
-): Promise<Content> {
-  const rawBody = await fs.readFile(`contents/${fileName}`, 'utf8')
-
-  const { content: body, data } = matter(rawBody) as {
-    content: string
-    data: Record<string, unknown>
-  }
-
-  const name = path.basename(fileName, '.md')
-  const title = data.title ?? name
-  ensureString(title, 'title')
-
-  const slug = data.slug ?? name
-  ensureString(slug, 'slug')
-
-  const explicitRawCreated = data.created ?? extractDateFromBeginning(slug)
-  const isRandom = explicitRawCreated == null
-  const created = dateToDateLikeObject(explicitRawCreated ?? data.fileCreated)
-  const modified = dateToDateLikeObject(data.fileModified)
-
-  const isPinned = Boolean(data.pinned)
-  const isIntermediate = Boolean(data.intermediate)
-  const isArchived = Boolean(data.archived)
-
-  return {
-    name,
-    slug,
-    body,
-    rawData: includeRawData ? data : null,
-    created,
-    modified,
-    isRandom,
-    title,
-    isPinned,
-    isIntermediate,
-    isArchived
-  }
-}
-
-export function ensureContents(): Promise<Contents> {
-  if (contents !== undefined) return contents
-
-  return (contents = (async () => {
-    const contentsArray = await Promise.all(
-      glob
-        .sync('contents/*.md')
-        .map((filePath) => path.basename(filePath))
-        .map((baseName) => loadContent(baseName))
-    )
-    return new Map(contentsArray.map((c) => [c.slug, c]))
-  })())
-}
-
-function dateToDateLikeObject(date: unknown): DateLikeObject | null {
-  if (date == null) return null
-  if (!(date instanceof Date)) {
-    throw new Error(`not date: ${date}`)
-  }
-  return {
-    year: date.getFullYear(),
-    month: date.getMonth() + 1,
-    day: date.getDate()
-  }
+const generatedContentData = contentData as {
+  contents: Content[]
+  metaData: MetaData
 }
 
 export async function getContent(slug: string): Promise<Content> {
-  const content = (await ensureContents()).get(slug)
+  const content = generatedContentData.contents.find((content) => content.slug === slug)
   if (content == null) throw new Error(`content not found: ${slug}`)
   return content
 }
 
 export async function getAllContents(): Promise<Content[]> {
-  return Array.from((await ensureContents()).values())
+  return generatedContentData.contents
 }
 
 export async function getAllSlugs(): Promise<string[]> {
-  return Array.from((await ensureContents()).keys())
+  return generatedContentData.contents.map((content) => content.slug)
 }
 
 export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number {
@@ -150,10 +63,5 @@ export function compareDateLike(d1: DateLikeObject, d2: DateLikeObject): number 
 }
 
 export function getMetaData(): Promise<MetaData> {
-  if (metaData !== undefined) return metaData
-
-  return (metaData = (async () => {
-    const raw = await fs.readFile('contents/metadata.json', 'utf8')
-    return JSON.parse(raw) as MetaData
-  })())
+  return Promise.resolve(generatedContentData.metaData)
 }

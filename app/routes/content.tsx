@@ -1,18 +1,20 @@
-import { Content, getAllSlugs, getContent, getMetaData } from '../contents'
-import { GetStaticPaths, GetStaticProps } from 'next'
-import { ShowDate } from '../components/ShowDate'
-import { MetaData } from '../components/MetaData'
+import type { MetaFunction } from 'react-router'
+import { useLoaderData } from 'react-router'
+import { createElement } from 'react'
+import type React from 'react'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import wikiLinkPlugin from 'remark-wiki-link'
 import remarkReact from 'remark-react'
-import { schema } from '../markdown-sanitization-schema'
 import remarkGfm from 'remark-gfm'
-import { createElement } from 'react'
 import remarkBreaks from 'remark-breaks'
-import { makeDescription } from '../utils/makeDescription'
+import { Content, getAllSlugs, getContent, getMetaData } from '../../src/contents'
+import { ShowDate } from '../../src/components/ShowDate'
+import { schema } from '../../src/markdown-sanitization-schema'
+import { makeDescription } from '../../src/utils/makeDescription'
+import { defaultMeta } from '../seo'
 
-type Props = {
+type LoaderData = {
   content: Content
   linksInfo: {
     incoming: Array<{ slug: string; title: string; name: string }>
@@ -25,11 +27,52 @@ type Props = {
   }
   nameToSlugMap: Record<string, { slug: string; isIntermediate: boolean }>
 }
-type Params = {
-  slug: string
+
+export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
+  if (!data) return defaultMeta({ path: location.pathname })
+
+  return defaultMeta({
+    title: data.content.title,
+    description: makeDescription(data.content.body),
+    path: location.pathname
+  })
 }
 
-export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props) {
+export async function loader({ params }: { params: { slug?: string } }): Promise<LoaderData> {
+  const slug = params.slug
+  if (slug == null || !(await getAllSlugs()).includes(slug)) {
+    throw new Response('Not Found', { status: 404 })
+  }
+
+  const content = await getContent(slug)
+  const metaData = await getMetaData()
+  const rawLinksInfo = metaData.nameToLinksMap[content.name]
+
+  function convert({ name }: { name: string }) {
+    const slug = metaData.nameToSlugMap[name]
+    const title = metaData.slugToTitleMap[slug]
+    return { name, slug, title }
+  }
+
+  const linksInfo = {
+    incoming: rawLinksInfo.incoming.map(convert),
+    outgoing: rawLinksInfo.outgoing.map((li) => ({
+      ...convert(li),
+      oneHopLinks: li.oneHopLinks.map(convert)
+    }))
+  }
+  const nameToSlugMap = Object.fromEntries(
+    Object.entries(metaData.nameToSlugMap).map(([name, slug]) => [
+      name,
+      { slug, isIntermediate: metaData.nameToLinksMap[name].isIntermediate }
+    ])
+  )
+
+  return { content, linksInfo, nameToSlugMap }
+}
+
+export default function ShowContent() {
+  const { content, linksInfo, nameToSlugMap } = useLoaderData<typeof loader>()
   const bodyElements = unified()
     .use(remarkParse)
     .use(remarkGfm)
@@ -42,15 +85,11 @@ export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props
         name in nameToSlugMap ? [`/${nameToSlugMap[name].slug}`] : [],
       hrefTemplate: (href: string) => href
     })
-    .use(remarkReact, { sanitize: schema, createElement })
-    .processSync(content.body).result
-
-  const description = makeDescription(content.body)
+    .use(remarkReact as any, { sanitize: schema, createElement })
+    .processSync(content.body).result as React.ReactNode
 
   return (
     <>
-      <MetaData title={content.title} description={description} />
-
       <main>
         <h1>{content.title}</h1>
         {!content.isIntermediate && !content.isRandom && <ShowDate date={content.created!} />}
@@ -94,41 +133,4 @@ export default function ShowContent({ content, linksInfo, nameToSlugMap }: Props
       )}
     </>
   )
-}
-
-export const getStaticProps: GetStaticProps<Props, Params> = async (context) => {
-  const { slug } = context.params!
-
-  const content = await getContent(slug)
-
-  const metaData = await getMetaData()
-  const rawLinksInfo = metaData.nameToLinksMap[content.name]
-
-  function convert({ name }: { name: string }) {
-    const slug = metaData.nameToSlugMap[name]
-    const title = metaData.slugToTitleMap[slug]
-    return { name, slug, title }
-  }
-
-  const linksInfo = {
-    incoming: rawLinksInfo.incoming.map(convert),
-    outgoing: rawLinksInfo.outgoing.map((li) => ({
-      ...convert(li),
-      oneHopLinks: li.oneHopLinks.map(convert)
-    }))
-  }
-  const nameToSlugMap = Object.fromEntries(
-    Object.entries(metaData.nameToSlugMap).map(([name, slug]) => [
-      name,
-      { slug, isIntermediate: metaData.nameToLinksMap[name].isIntermediate }
-    ])
-  )
-  return { props: { content, linksInfo, nameToSlugMap } }
-}
-
-export const getStaticPaths: GetStaticPaths<Params> = async () => {
-  return {
-    paths: (await getAllSlugs()).map((slug) => ({ params: { slug } })),
-    fallback: false
-  }
 }

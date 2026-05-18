@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "lib": [
       "dom",
       "es2015",
@@ -10,24 +10,25 @@
       "es2019"
     ],
     "strict": true,
-    "target": "es6",
+    "target": "es2022",
     "module": "esnext",
     "esModuleInterop": true,
     "allowJs": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/typing"
-    ],
+    "types": ["@cloudflare/workers-types", "vite/client"],
     "incremental": true
   },
   "include": [
-    "./src"
+    "./app",
+    "./src",
+    "./workers",
+    "./react-router.config.ts",
+    "./vite.config.ts"
   ],
   "exclude": [
     "node_modules"

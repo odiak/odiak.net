@@ -1,6 +1,6 @@
 import { google } from 'googleapis'
 import fsp from 'fs/promises'
-import { loadContent, Content, LinksInformation, MetaData } from './contents'
+import { loadContent, Content, LinksInformation, MetaData } from './node-contents'
 import path from 'path'
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'

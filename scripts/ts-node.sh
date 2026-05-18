@@ -1,1 +1,1 @@
-node --loader @k-foss/ts-esnode --experimental-specifier-resolution=node $@
+./node_modules/.bin/tsx "$@"

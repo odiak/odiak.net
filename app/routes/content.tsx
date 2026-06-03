@@ -12,6 +12,7 @@ import { Content, getAllSlugs, getContent, getMetaData } from '../../src/content
 import { ShowDate } from '../../src/components/ShowDate'
 import { schema } from '../../src/markdown-sanitization-schema'
 import { makeDescription } from '../../src/utils/makeDescription'
+import { getLeadingImageUrl } from '../../src/utils/getLeadingImageUrl'
 import { defaultMeta } from '../seo'
 
 type LoaderData = {
@@ -34,6 +35,7 @@ export const meta: MetaFunction<typeof loader> = ({ data, location }) => {
   return defaultMeta({
     title: data.content.title,
     description: makeDescription(data.content.body),
+    image: getLeadingImageUrl(data.content.body),
     path: location.pathname
   })
 }

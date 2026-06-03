@@ -5,10 +5,12 @@ const defaultDescription = '岩本海童(odiak)の個人的なウェブサイト
 export function defaultMeta({
   title,
   description = defaultDescription,
+  image = defaultImage,
   path
 }: {
   title?: string
   description?: string
+  image?: string
   path: string
 }) {
   const pageTitle = title != null && title !== '' ? `${title} - ${websiteName}` : websiteName
@@ -20,7 +22,7 @@ export function defaultMeta({
     { property: 'og:type', content: 'website' },
     { property: 'og:title', content: displayTitle },
     { property: 'og:description', content: description },
-    { property: 'og:image', content: defaultImage },
+    { property: 'og:image', content: image },
     { property: 'og:url', content: `https://odiak.net${path}` },
     { property: 'og:locale', content: 'ja_JP' },
     { property: 'og:site_name', content: websiteName },

@@ -32,9 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Link to="/">odiak.net</Link>
         </header>
         {children}
-        <footer>
-          &copy; 2021 Kaido Iwamoto; <a href="https://github.com/odiak/odiak.net">source code</a>
-        </footer>
+        <footer>&copy; 2021 Kaido Iwamoto</footer>
         <ScrollRestoration />
         <Scripts />
       </body>

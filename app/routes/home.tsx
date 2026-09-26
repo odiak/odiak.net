@@ -17,7 +17,11 @@ export async function loader(): Promise<LoaderData> {
   )
 
   const subContents = contents.filter((c) => c.isRandom)
-  subContents.sort((a, b) => -compareDateLike(a.modified!, b.modified!))
+  subContents.sort((a, b) => {
+    if (!a.modified) return b.modified ? 1 : 0
+    if (!b.modified) return -1
+    return -compareDateLike(a.modified, b.modified)
+  })
 
   return { mainContents, subContents }
 }

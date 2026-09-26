@@ -6,6 +6,7 @@ import { Node } from 'unist'
 
 type TraversableNode = Node & {
   children?: TraversableNode[]
+  value?: string
 }
 
 export function getProcessor(contents: Content[]) {
@@ -30,7 +31,7 @@ export type Link = {
 function collectAllLinks(content: TraversableNode, links: Map<string, Link>) {
   if (content.type === 'wikiLink') {
     const data = content.data as { permalink: string; alias: string }
-    links.set(data.permalink, { name: data.alias, slug: data.permalink })
+    links.set(data.permalink, { name: content.value ?? data.alias, slug: data.permalink })
   }
   if (content.children == null) return
   for (const child of content.children) {

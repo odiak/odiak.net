@@ -1,4 +1,4 @@
-import { google } from 'googleapis'
+import { fetchKuroContents } from './kuro-contents'
 import fsp from 'fs/promises'
 import { loadContent, Content, LinksInformation, MetaData } from './node-contents'
 import path from 'path'
@@ -11,67 +11,27 @@ import remarkStringify from 'remark-stringify'
 import matter from 'gray-matter'
 
 export async function downloadContents() {
-  const credentials = JSON.parse(process.env['GOOGLE_CREDENTIALS'] ?? '{}')
-  const folderId = process.env['FOLDER_ID']
+  const token = process.env['KURO_API_TOKEN']
+  if (!token) throw new Error('KURO_API_TOKEN is required')
 
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly']
-  })
-  const drive = google.drive({ version: 'v3', auth })
-
+  const notes = await fetchKuroContents(token)
   await fsp.rm('contents', { recursive: true, force: true })
   await fsp.mkdir('contents')
+  for (const note of notes) {
+    await fsp.writeFile(`contents/${note.name}.md`, note.content, 'utf8')
+  }
+  console.log(`Downloaded ${notes.length} public notes from Kuro`)
 
-  let pageToken: string | undefined
-  const promises: Array<Promise<unknown>> = []
-  const names: Array<string> = []
-  do {
-    const data = (
-      await drive.files.list({
-        q: `'${folderId}' in parents`,
-        pageToken,
-        fields: 'files(id,name,createdTime,modifiedTime)'
-      })
-    ).data
-    if (data.files) {
-      for (const file of data.files) {
-        if (!file.name!.endsWith('.md')) continue
-
-        names.push(path.basename(file.name!, '.md'))
-        console.log(`downloading ${file.name}`)
-        const filePath = `contents/${file.name}`
-        const promise = drive.files
-          .get({ fileId: file.id!, alt: 'media' }, { responseType: 'stream' })
-          .then(async ({ data: stream }) => {
-            const chunks: Buffer[] = []
-            stream.on('data', (chunk) => {
-              chunks.push(Buffer.from(chunk))
-            })
-            await new Promise((resolve, reject) => {
-              stream.on('error', reject)
-              stream.on('end', async () => {
-                let content = Buffer.concat(chunks).toString('utf8')
-                const { content: body, data } = matter(content)
-                data.fileCreated = new Date(file.createdTime!)
-                data.fileModified = new Date(file.modifiedTime!)
-                content = matter.stringify(body, data)
-                fsp.writeFile(filePath, content, 'utf8')
-                resolve(undefined)
-              })
-            })
-          })
-        promises.push(promise)
-      }
-    }
-    pageToken = data.nextPageToken ?? undefined
-  } while (pageToken)
-  await Promise.all(promises)
-
-  await preprocessContents(names)
+  const sourceNames = new Map(
+    notes.map((note) => [note.sourcePath.slice('public/'.length, -3), note.name])
+  )
+  await preprocessContents(
+    notes.map((note) => note.name),
+    sourceNames
+  )
 }
 
-async function preprocessContents(names: string[]) {
+async function preprocessContents(names: string[], sourceNames: Map<string, string>) {
   const processor = unified()
     .use(remarkParse)
     .use(wikiLinkPlugin, {
@@ -90,6 +50,7 @@ async function preprocessContents(names: string[]) {
   for (const name of names) {
     const content = await loadContent(`${name}.md`, true)
     contents.push(content)
+    if (slugToTitleMap.has(content.slug)) throw new Error(`Duplicate article slug: ${content.slug}`)
     nameToSlugMap.set(name, content.slug)
     slugToTitleMap.set(content.slug, content.title)
   }
@@ -101,6 +62,14 @@ async function preprocessContents(names: string[]) {
       (n) => n.toLowerCase() === name.toLowerCase()
     )
     if (matchedName) return matchedName
+    if (
+      path.basename(name) !== name ||
+      name === '.' ||
+      name === '..' ||
+      /[\\\x00-\x1f]/.test(name)
+    ) {
+      throw new Error(`Invalid linked article name: ${name}`)
+    }
     const slug = name
     nameToSlugMap.set(name, slug)
     singletonNames.add(name)
@@ -115,7 +84,7 @@ async function preprocessContents(names: string[]) {
     const linksInfo = nameToLinksMap.get(content.name)!
 
     const node = processor.parse(content.body)
-    const modified = removePrefixesFromNode(node, 'public/')
+    const modified = normalizeNoteLinks(node, sourceNames)
     if (modified) {
       content.body = processor.stringify(node)
       await fsp.writeFile(
@@ -126,6 +95,8 @@ async function preprocessContents(names: string[]) {
 
     const links = collectAllInternalLinks(node)
     for (const { name: linkName } of links) {
+      // Resolved public paths were shortened above; leave other paths out of related articles.
+      if (linkName.includes('/') || linkName.includes('\\')) continue
       const canonicalName = getCanonicalName(linkName)
       if (!nameToLinksMap.has(canonicalName)) {
         nameToLinksMap.set(canonicalName, { incoming: [], outgoing: [], isIntermediate: true })
@@ -174,28 +145,27 @@ function mapToObject<T>(map: Map<string, T>): Record<string, T> {
   return Object.fromEntries(map.entries())
 }
 
-function removePrefix(str: string, prefix: string): string {
-  if (str.startsWith(prefix)) {
-    return str.slice(prefix.length)
-  }
-  return str
-}
-
 type MarkdownNode = Node & {
   value?: string
-  data?: { alias?: string }
+  data?: { alias?: string; permalink?: string }
   children?: MarkdownNode[]
 }
 
-function removePrefixesFromNode(node: MarkdownNode, prefix: string): boolean {
+function normalizeNoteLinks(node: MarkdownNode, sourceNames: Map<string, string>): boolean {
   let modified = false
   if (node.type === 'wikiLink') {
-    node.value = node.data!.alias = removePrefix(node.value as string, prefix)
-    modified = true
+    const original = node.value as string
+    const relative = original.replace(/^public\//, '').replace(/\.md$/, '')
+    const name = sourceNames.get(relative)
+    if (name && name !== original) {
+      node.value = name
+      if (node.data?.alias === original) node.data.alias = name
+      if (node.data) node.data.permalink = name
+      modified = true
+    }
   }
-  if (!Array.isArray(node.children)) return modified
-  for (const child of node.children) {
-    modified = removePrefixesFromNode(child, prefix) || modified
+  for (const child of node.children ?? []) {
+    modified = normalizeNoteLinks(child, sourceNames) || modified
   }
   return modified
 }

@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "npm@11.14.1",
   "scripts": {
+    "test": "tsx --test test/*.test.ts",
     "dev": "react-router dev",
     "build": "./scripts/ts-node.sh src/download-contents.ts && ./scripts/ts-node.sh src/generate-feed.ts && react-router build",
     "start": "wrangler dev",
@@ -38,7 +39,6 @@
     "@types/node": "^25.8.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "googleapis": "^171.4.0",
     "js-yaml": "^4.1.1",
     "prettier": "^3.8.3",
     "tsx": "^4.22.1",

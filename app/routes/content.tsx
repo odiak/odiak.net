@@ -94,18 +94,22 @@ export default function ShowContent() {
     <>
       <main>
         <h1>{content.title}</h1>
-        {!content.isIntermediate && !content.isRandom && <ShowDate date={content.created!} />}
+        {!content.isIntermediate && !content.isRandom && (
+          <div className="content-meta">
+            <ShowDate date={content.created!} />
+          </div>
+        )}
         {content.isRandom && (
-          <>
+          <div className="content-meta">
             <div>
               作成: <ShowDate date={content.created} />
             </div>
             <div>
               更新: <ShowDate date={content.modified} />
             </div>
-          </>
+          </div>
         )}
-        {bodyElements}
+        <div className="content-body">{bodyElements}</div>
       </main>
       {(linksInfo.incoming.length > 0 || linksInfo.outgoing.length > 0) && (
         <aside className="related-contents">

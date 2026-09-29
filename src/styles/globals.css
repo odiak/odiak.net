@@ -1,30 +1,50 @@
+:root {
+  --text: #222;
+  --text-sub: #666;
+  --text-muted: #888;
+  --border: #e3e3e3;
+  --accent: #f94;
+  --code-bg: #f4f4f2;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP', Meiryo, Roboto, 'Helvetica Neue', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
 html {
   font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
 body {
   padding: 0;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell,
-    Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
-}
-
-time {
-  color: #666;
-  margin-right: 0.4em;
+  font-family: var(--font-sans);
 }
 
 body {
   margin-left: auto;
   margin-right: auto;
-  padding: 10px;
-  max-width: 800px;
+  padding: 10px 20px 40px;
+  max-width: 760px;
+  color: var(--text);
+  background-color: #fff;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+time {
+  color: var(--text-sub);
+  margin-right: 0.4em;
+  font-variant-numeric: tabular-nums;
 }
 
 header.main-header {
   font-size: 1.2rem;
-  border-bottom: 2px solid #f94;
+  border-bottom: 2px solid var(--accent);
   padding-bottom: 10px;
   color: #555;
 }
@@ -35,8 +55,9 @@ header.main-header a:visited {
 }
 
 footer {
-  margin-top: 30px;
+  margin-top: 48px;
   color: #777;
+  font-size: 0.875rem;
 }
 
 footer a:link,
@@ -52,40 +73,211 @@ a:visited.new {
   color: inherit;
 }
 
+/* 記事ページ */
+
+main h1 {
+  font-size: 1.9rem;
+  line-height: 1.4;
+  margin: 1.6rem 0 0.6rem;
+  font-feature-settings: 'palt';
+  letter-spacing: 0.02em;
+}
+
+.content-meta {
+  font-size: 0.875rem;
+  color: var(--text-sub);
+  line-height: 1.7;
+}
+
+.content-body {
+  margin-top: 2rem;
+  font-size: 1.0625rem;
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+  line-break: strict;
+}
+
+.content-body h2,
+.content-body h3,
+.content-body h4,
+.content-body h5,
+.content-body h6 {
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  font-feature-settings: 'palt';
+}
+
+.content-body h2 {
+  font-size: 1.45rem;
+  margin: 2.2em 0 0.8em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.content-body h3 {
+  font-size: 1.2rem;
+  margin: 2.2em 0 0.6em;
+}
+
+.content-body h4,
+.content-body h5,
+.content-body h6 {
+  font-size: 1rem;
+  margin: 2em 0 0.5em;
+}
+
+.content-body > :first-child {
+  margin-top: 0;
+}
+
+.content-body p {
+  margin: 0 0 1.4em;
+}
+
+.content-body ul,
+.content-body ol {
+  padding-left: 1.6em;
+  margin: 0 0 1.4em;
+}
+
+.content-body li + li {
+  margin-top: 0.3em;
+}
+
+.content-body li > ul,
+.content-body li > ol {
+  margin: 0.3em 0 0;
+}
+
+.content-body li > p {
+  margin-bottom: 0.4em;
+}
+
+.content-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.8em 0;
+}
+
+.content-body hr + h2,
+.content-body hr + h3 {
+  margin-top: 1.4em;
+}
+
+.content-body a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+.content-body a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.content-body code {
+  border-radius: 4px;
+  background-color: var(--code-bg);
+  padding: 0.15em 0.4em;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+.content-body pre {
+  margin: 0 0 1.6em;
+  border-radius: 6px;
+  background-color: var(--code-bg);
+  overflow-x: auto;
+}
+
+.content-body pre > code {
+  display: block;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: 100%;
+  padding: 1em 1.2em;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  background-color: transparent;
+  border-radius: 0;
+}
+
+.content-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.content-body blockquote {
+  margin: 0 0 1.4em;
+  padding: 0.2em 1.2em;
+  border-left: 4px solid #ccc;
+  color: #555;
+}
+
+.content-body blockquote > :first-child {
+  margin-top: 0.2em;
+}
+
+.content-body blockquote > :last-child {
+  margin-bottom: 0.2em;
+}
+
+.content-body table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 1.6em;
+  line-height: 1.6;
+}
+
+.content-body th,
+.content-body td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.8em;
+}
+
+.content-body th {
+  background-color: #fafafa;
+}
+
+@media (max-width: 600px) {
+  main h1 {
+    font-size: 1.6rem;
+  }
+
+  .content-body {
+    font-size: 1rem;
+    line-height: 1.85;
+  }
+
+  .content-body h2 {
+    font-size: 1.3rem;
+  }
+
+  .content-body h3 {
+    font-size: 1.125rem;
+  }
+}
+
 aside.related-contents {
-  border-top: 1px solid #ccc;
-  margin-top: 16px;
-  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 3.5rem;
+  padding-top: 1.5rem;
 }
 
 aside.related-contents header {
   font-weight: bold;
-  font-size: 20px;
+  font-size: 1.1rem;
   color: #555;
+  margin-bottom: 0.4em;
 }
 
-main code {
-  border-radius: 4px;
-  background-color: #eee;
-  padding: 0.2em 0.4em;
-  font-size: 85%;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+aside.related-contents ul {
+  padding-left: 1.4em;
+  margin: 0;
+  line-height: 1.8;
 }
 
-main pre > code {
-  display: block;
-  padding: 0.8em;
-}
-
-main img {
-  max-width: 100%;
-}
-
-main blockquote {
-  margin-left: 10px;
-  padding: 1px 8px 1px 20px;
-  border-left: 4px solid #aaa;
-}
+/* トップページ */
 
 .h-other {
   font-weight: normal;
@@ -111,5 +303,4 @@ ul.sub-contents-list > li:not(:last-child):after {
   content: '/';
   margin-left: 10px;
   margin-right: 10px;
-  display: inline-block;
 }

@@ -1,6 +1,10 @@
 import { createRequestHandler } from 'react-router'
 
-type Env = Record<string, unknown>
+type Env = {
+  DEPLOY_HOOK_URL?: string
+  ACCESS_TEAM_DOMAIN?: string
+  ACCESS_AUD?: string
+}
 
 declare module 'react-router' {
   export interface AppLoadContext {

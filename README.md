@@ -29,3 +29,19 @@ Kuro の Settings → API トークンで「ノートの読み取り専用」、
 - 更新日は Kuro の `mtime` を使う。更新日時がない「その他」の記事は一覧の末尾に並べる。作成日は従来どおり frontmatter の `created`、日付入り slug、`fileCreated` の順。Kuro はファイル作成日時を返さないため、日付のない記事は source の frontmatter に追記する。
 - 認証失敗、欠損した本文、取得件数ゼロではビルドを止める。ダウンロード失敗時は前回の `contents/` を残す。
 - `npm test`: 取得処理とリンク変換の回帰テスト。
+
+## 再デプロイ（`/update`）
+
+Kuro の記事を編集した後、`/update` の「再デプロイする」ボタンから Workers Builds の deploy hook を呼び、サイトをビルドし直せる。
+
+1. Workers & Pages → この Worker → Settings → Builds → Deploy Hooks で hook を作り、URL を控える
+2. Zero Trust → Access → Applications で Self-hosted のアプリを追加する
+   - ドメイン `odiak.net`、パス `update*`（`/update` と React Router の `/update.data` をまとめて保護する）
+   - 自分のメールアドレスだけを許可する policy を付ける
+   - 作成後の Application Audience (AUD) Tag と、チームドメイン（`<team>.cloudflareaccess.com`）を控える
+3. Worker の runtime secrets に設定する（Build variables ではない）:
+   - `DEPLOY_HOOK_URL`: deploy hook の URL
+   - `ACCESS_TEAM_DOMAIN`: チームドメイン
+   - `ACCESS_AUD`: AUD Tag
+
+Worker 側でも `Cf-Access-Jwt-Assertion` の JWT を検証する。Access を通っていないリクエスト（workers.dev 経由など）や、secret が未設定の場合は 403 を返す。`npm run dev` では検証を省き、`DEPLOY_HOOK_URL` を設定しなければ hook は呼ばれない。

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import matter from 'gray-matter'
-import { fetchKuroContents } from '../src/kuro-contents'
+import { fetchKuroContents, fetchKuroImages } from '../src/kuro-contents'
 
 const token = 'test-token'
 const stats = [
@@ -91,6 +91,39 @@ test('rejects unsafe or non-public paths', async () => {
   }
 })
 
+test('downloads only images under public/images/ as bytes', async () => {
+  const requested: string[] = []
+  const fetcher: typeof fetch = async (input) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/api/notes/attachments') {
+      return Response.json({
+        pathPrefix: 'public/',
+        files: [
+          { path: 'public/images/a.png', mtime: 1, size: 3 },
+          { path: 'public/images/doc.pdf', mtime: 1, size: 3 },
+          { path: 'public/other.png', mtime: 1, size: 3 }
+        ]
+      })
+    }
+    requested.push(url.searchParams.get('path')!)
+    return new Response(new Uint8Array([1, 2, 3]))
+  }
+  assert.deepEqual(await fetchKuroImages(token, fetcher), [
+    { sourcePath: 'public/images/a.png', bytes: new Uint8Array([1, 2, 3]) }
+  ])
+  assert.deepEqual(requested, ['public/images/a.png'])
+
+  for (const filePath of ['private/images/a.png', 'public/images/../a.png']) {
+    const unsafe: typeof fetch = async () =>
+      Response.json({ pathPrefix: 'public/', files: [{ path: filePath, mtime: 1, size: 1 }] })
+    await assert.rejects(fetchKuroImages(token, unsafe), /Unexpected attachment path/)
+  }
+  await assert.rejects(
+    fetchKuroImages(token, async () => Response.json({ pathPrefix: '', files: [] })),
+    /restricted to public/
+  )
+})
+
 test('download CLI preserves URLs and nested wiki links, and keeps old files on fetch failure', async () => {
   const root = fileURLToPath(new URL('../', import.meta.url))
   const cwd = await mkdtemp(path.join(tmpdir(), 'odiak-kuro-test-'))
@@ -101,6 +134,17 @@ test('download CLI preserves URLs and nested wiki links, and keeps old files on 
     res.setHeader('Content-Type', 'application/json')
     if (fail) {
       res.writeHead(503).end('{}')
+    } else if (url.pathname === '/api/notes/attachments') {
+      res.end(
+        JSON.stringify({
+          pathPrefix: 'public/',
+          files: [{ path: 'public/images/sub/a b.png', mtime: 1, size: 3 }]
+        })
+      )
+    } else if (url.pathname === '/api/notes/attachment') {
+      assert.equal(url.searchParams.get('path'), 'public/images/sub/a b.png')
+      res.setHeader('Content-Type', 'image/png')
+      res.end(Buffer.from([1, 2, 3]))
     } else if (url.pathname === '/api/notes') {
       res.end(JSON.stringify({ pathPrefix: 'public/', notes: stats }))
     } else {
@@ -111,7 +155,7 @@ test('download CLI preserves URLs and nested wiki links, and keeps old files on 
           content:
             notePath === stats[0].path
               ? '---\nslug: first\ncreated: 2020-01-02\n---\n[[public/nested/日本語]]\n[[private/日本語]]\n[[missing/日本語]]\n[[public/missing/日本語]]\n[[public/missing/日本語.md:未解決]]\n[[private/First]]\n'
-              : '---\nslug: japanese\n---\n[[public/First:表示名]]\n'
+              : '---\nslug: japanese\n---\n[[public/First:表示名]]\n\n![[a b.png|300]]\n\n![図](../images/sub/a%20b.png)\n'
         })
       )
     }
@@ -149,7 +193,17 @@ test('download CLI preserves URLs and nested wiki links, and keeps old files on 
   try {
     await mkdir(path.join(cwd, 'contents'))
     await writeFile(path.join(cwd, 'contents/stale.md'), 'stale')
+    await mkdir(path.join(cwd, 'public/images'), { recursive: true })
+    await writeFile(path.join(cwd, 'public/images/stale.png'), 'stale')
     await run()
+    assert.deepEqual(
+      await readFile(path.join(cwd, 'public/images/sub/a b.png')),
+      Buffer.from([1, 2, 3])
+    )
+    await assert.rejects(readFile(path.join(cwd, 'public/images/stale.png')))
+    const japaneseBody = await readFile(path.join(cwd, 'contents/日本語.md'), 'utf8')
+    assert.ok(japaneseBody.includes('![a b|300](/images/sub/a%20b.png)'))
+    assert.ok(japaneseBody.includes('![図](/images/sub/a%20b.png)'))
     assert.match(await readFile(path.join(cwd, 'contents/First.md'), 'utf8'), /\[\[日本語\]\]/)
     const metadata = JSON.parse(await readFile(path.join(cwd, 'contents/metadata.json'), 'utf8'))
     assert.equal(metadata.nameToSlugMap.First, 'first')

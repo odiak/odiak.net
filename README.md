@@ -28,6 +28,14 @@ Kuro の Settings → API トークンで「ノートの読み取り専用」、
 - `[[public/subfolder/Note]]` は取得した記事名へ変換し、既存の関連記事生成を続ける。取得した記事に解決できないパス付きリンクは本文に残し、関連記事には含めない。
 - 更新日は Kuro の `mtime` を使う。更新日時がない「その他」の記事は一覧の末尾に並べる。作成日は従来どおり frontmatter の `created`、日付入り slug、`fileCreated` の順。Kuro はファイル作成日時を返さないため、日付のない記事は source の frontmatter に追記する。
 - 認証失敗、欠損した本文、取得件数ゼロではビルドを止める。ダウンロード失敗時は前回の `contents/` を残す。
+
+### 画像
+
+Kuro の `public/images/` 配下の画像（png / jpg / gif / webp / avif / svg、サブフォルダを含む）を `public/images/` に保存し、`/images/...` で配信する（Kuro の添付 API を使う）。
+
+- `![alt](./images/foo.png)` のような相対パスは記事の場所から、`public/images/foo.png` は vault のルートから解決し、`/images/foo.png` に書き換える。
+- `![[foo.png]]` はパス、なければファイル名で `public/images/` 内を探して Markdown の画像に変換する。コード内と、解決できない埋め込み（ノートの埋め込みなど）はそのまま残す。
+- サイズ指定は Obsidian と同じく `![[foo.png|300]]`、`![alt|300x200](./images/foo.png)` で `width` / `height` になる。
 - `npm test`: 取得処理とリンク変換の回帰テスト。
 
 ## 再デプロイ（`/update`）

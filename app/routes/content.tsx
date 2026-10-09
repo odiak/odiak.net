@@ -11,6 +11,7 @@ import remarkBreaks from 'remark-breaks'
 import { Content, getAllSlugs, getContent, getMetaData } from '../../src/contents'
 import { ShowDate } from '../../src/components/ShowDate'
 import { schema } from '../../src/markdown-sanitization-schema'
+import { remarkImageSize } from '../../src/markdown-image-size'
 import { makeDescription } from '../../src/utils/makeDescription'
 import { getLeadingImageUrl } from '../../src/utils/getLeadingImageUrl'
 import { defaultMeta } from '../seo'
@@ -87,6 +88,7 @@ export default function ShowContent() {
         name in nameToSlugMap ? [`/${nameToSlugMap[name].slug}`] : [],
       hrefTemplate: (href: string) => href
     })
+    .use(remarkImageSize)
     .use(remarkReact as any, { sanitize: schema, createElement })
     .processSync(content.body).result as React.ReactNode
 

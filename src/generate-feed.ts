@@ -9,6 +9,7 @@ import remarkHtml from 'remark-html'
 import { compareDateLike, getAllContents } from './node-contents'
 import remarkBreaks from 'remark-breaks'
 import { makeDescription } from './utils/makeDescription'
+import { remarkImageSize } from './markdown-image-size'
 
 async function generateFeed() {
   const feed = new Feed({
@@ -45,6 +46,7 @@ async function generateFeed() {
             contents.filter((c) => c.title.toLowerCase() === name.toLowerCase()).map((c) => c.slug),
           hrefTemplate: (slug: string) => `/${slug}`
         })
+        .use(remarkImageSize)
         .use(remarkHtml)
         .processSync(c.body)
         .toString()

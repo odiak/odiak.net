@@ -1,4 +1,4 @@
-import { fetchKuroContents } from './kuro-contents'
+import { fetchKuroContents, fetchKuroImages } from './kuro-contents'
 import fsp from 'fs/promises'
 import { loadContent, Content, LinksInformation, MetaData } from './node-contents'
 import path from 'path'
@@ -9,29 +9,46 @@ import { collectAllInternalLinks } from './markdown'
 import { Node } from 'unist'
 import remarkStringify from 'remark-stringify'
 import matter from 'gray-matter'
+import { IMAGE_SOURCE_PREFIX, imageUrl, resolveImageUrl, rewriteImageEmbeds } from './images'
+
+const imageDirectory = 'public/images'
 
 export async function downloadContents() {
   const token = process.env['KURO_API_TOKEN']
   if (!token) throw new Error('KURO_API_TOKEN is required')
 
   const notes = await fetchKuroContents(token)
+  const images = await fetchKuroImages(token)
   await fsp.rm('contents', { recursive: true, force: true })
   await fsp.mkdir('contents')
   for (const note of notes) {
     await fsp.writeFile(`contents/${note.name}.md`, note.content, 'utf8')
   }
-  console.log(`Downloaded ${notes.length} public notes from Kuro`)
+  await fsp.rm(imageDirectory, { recursive: true, force: true })
+  for (const image of images) {
+    const file = path.join(imageDirectory, image.sourcePath.slice(IMAGE_SOURCE_PREFIX.length))
+    await fsp.mkdir(path.dirname(file), { recursive: true })
+    await fsp.writeFile(file, image.bytes)
+  }
+  console.log(`Downloaded ${notes.length} public notes and ${images.length} images from Kuro`)
 
   const sourceNames = new Map(
     notes.map((note) => [note.sourcePath.slice('public/'.length, -3), note.name])
   )
   await preprocessContents(
     notes.map((note) => note.name),
-    sourceNames
+    sourceNames,
+    new Map(notes.map((note) => [note.name, note.sourcePath])),
+    new Set(images.map((image) => image.sourcePath))
   )
 }
 
-async function preprocessContents(names: string[], sourceNames: Map<string, string>) {
+async function preprocessContents(
+  names: string[],
+  sourceNames: Map<string, string>,
+  sourcePaths: Map<string, string>,
+  images: Set<string>
+) {
   const processor = unified()
     .use(remarkParse)
     .use(wikiLinkPlugin, {
@@ -83,10 +100,14 @@ async function preprocessContents(names: string[], sourceNames: Map<string, stri
   for (const content of contents) {
     const linksInfo = nameToLinksMap.get(content.name)!
 
-    const node = processor.parse(content.body)
-    const modified = normalizeNoteLinks(node, sourceNames)
-    if (modified) {
-      content.body = processor.stringify(node)
+    const notePath = sourcePaths.get(content.name)!
+    let body = rewriteImageEmbeds(content.body, notePath, images)
+    const node = processor.parse(body)
+    if (normalizeNoteLinks(node, sourceNames, (url) => resolveImageUrl(url, notePath, images))) {
+      body = processor.stringify(node)
+    }
+    if (body !== content.body) {
+      content.body = body
       await fsp.writeFile(
         `contents/${content.name}.md`,
         matter.stringify(content.body, content.rawData as Record<string, unknown>)
@@ -147,12 +168,24 @@ function mapToObject<T>(map: Map<string, T>): Record<string, T> {
 
 type MarkdownNode = Node & {
   value?: string
+  url?: string
   data?: { alias?: string; permalink?: string }
   children?: MarkdownNode[]
 }
 
-function normalizeNoteLinks(node: MarkdownNode, sourceNames: Map<string, string>): boolean {
+function normalizeNoteLinks(
+  node: MarkdownNode,
+  sourceNames: Map<string, string>,
+  resolveImage: (url: string) => string | undefined
+): boolean {
   let modified = false
+  if (node.type === 'image' && node.url) {
+    const image = resolveImage(node.url)
+    if (image) {
+      node.url = imageUrl(image)
+      modified = true
+    }
+  }
   if (node.type === 'wikiLink') {
     const original = node.value as string
     const relative = original.replace(/^public\//, '').replace(/\.md$/, '')
@@ -165,7 +198,7 @@ function normalizeNoteLinks(node: MarkdownNode, sourceNames: Map<string, string>
     }
   }
   for (const child of node.children ?? []) {
-    modified = normalizeNoteLinks(child, sourceNames) || modified
+    modified = normalizeNoteLinks(child, sourceNames, resolveImage) || modified
   }
   return modified
 }

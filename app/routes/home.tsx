@@ -31,7 +31,7 @@ export default function Home() {
 
   return (
     <>
-      <p>岩本海童の個人的なウェブサイトです。</p>
+      <p className="site-description">岩本海童の個人的なウェブサイトです。</p>
 
       <main>
         <ul className="main-contents-list">

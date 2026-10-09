@@ -43,6 +43,13 @@ a:link {
 a:visited {
   color: var(--link-visited);
 }
+a {
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  text-decoration-thickness: 2px;
+}
 
 time {
   color: var(--text-sub);
@@ -174,15 +181,6 @@ main h1 {
   margin-top: 1.4em;
 }
 
-.content-body a {
-  text-underline-offset: 0.2em;
-  text-decoration-thickness: 1px;
-}
-
-.content-body a:hover {
-  text-decoration-thickness: 2px;
-}
-
 .content-body code {
   border-radius: 4px;
   background-color: var(--code-bg);
@@ -289,19 +287,42 @@ aside.related-contents ul {
 
 /* トップページ */
 
-.h-other {
-  font-weight: normal;
-  font-size: 18px;
+.site-description {
+  margin: 1.5rem 0;
+  color: #444;
 }
 
-ul.main-contents-list {
+ul.main-contents-list,
+ul.sub-contents-list {
   list-style: none;
   padding: 0;
+  margin: 0;
+  text-autospace: normal;
+}
+
+ul.main-contents-list > li {
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+  padding: 0.25em 0;
+  text-wrap: pretty;
+}
+
+ul.main-contents-list time {
+  flex-shrink: 0;
+  margin-right: 0;
+  font-size: 0.875rem;
+}
+
+.h-other {
+  font-weight: normal;
+  font-size: 1.125rem;
+  color: #555;
+  margin: 2.5rem 0 0.6rem;
 }
 
 ul.sub-contents-list {
-  padding: 0;
-  list-style: none;
+  line-height: 2;
 }
 
 ul.sub-contents-list > li {
@@ -313,4 +334,5 @@ ul.sub-contents-list > li:not(:last-child):after {
   content: '/';
   margin-left: 10px;
   margin-right: 10px;
+  color: #bbb;
 }
